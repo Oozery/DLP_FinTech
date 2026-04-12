@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZKP Shield - Privacy-Preserving UPI Payments</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Animated Background -->
+    <canvas id="particleCanvas"></canvas>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <div class="shield-icon">ZKP</div>
+            <span>ZKP Shield</span>
+        </div>
+        <div class="nav-links">
+            <a href="#hero" class="nav-link active" data-section="hero">Home</a>
+            <a href="#transactions" class="nav-link" data-section="transactions">Transactions</a>
+            <a href="#dlp-demo" class="nav-link" data-section="dlp-demo">DLP Explorer</a>
+            <a href="#zkp-demo" class="nav-link" data-section="zkp-demo">ZK Proofs</a>
+            <a href="#crypto-suite" class="nav-link" data-section="crypto-suite">Crypto Suite</a>
+        </div>
+        <div class="nav-status">
+            <span class="status-dot"></span>
+            <span>System Secure</span>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="hero" class="section hero-section">
+        <div class="hero-content">
+            <div class="hero-badge">DLP-Based Security</div>
+            <h1 class="hero-title">
+                Privacy-Preserving<br>
+                <span class="gradient-text">UPI Transactions</span>
+            </h1>
+            <p class="hero-subtitle">
+                Prove you have enough balance without revealing how much you have.
+                Powered by the mathematical hardness of the Discrete Logarithm Problem.
+            </p>
+            <div class="hero-stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-protocols">7</div>
+                    <div class="stat-label">DLP Protocols</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-bits">256</div>
+                    <div class="stat-label">Bit Security</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-tests">33</div>
+                    <div class="stat-label">Tests Passing</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">Data Exposed</div>
+                </div>
+            </div>
+            <div class="hero-actions">
+                <button class="btn btn-primary" onclick="scrollToSection('dlp-demo')">
+                    Explore DLP
+                    <span class="btn-arrow">→</span>
+                </button>
+                <button class="btn btn-secondary" onclick="scrollToSection('transactions')">
+                    Try Transaction
+                </button>
+            </div>
+        </div>
+        <div class="hero-visual">
+            <div class="crypto-animation" id="heroAnimation"></div>
+        </div>
+    </section>
+
+    <!-- Transaction Section -->
+    <section id="transactions" class="section">
+        <div class="section-header">
+            <div class="section-badge">Live Demo</div>
+            <h2>Privacy-Preserving Transactions</h2>
+            <p>Send money without revealing your balance</p>
+        </div>
+
+        <div class="tx-container">
+            <!-- Users Panel -->
+            <div class="users-panel">
+                <div class="demo-card">
+                    <h3>Users</h3>
+                    <button class="btn btn-secondary btn-full" onclick="setupDemoUsers()" id="setup-btn">
+                        Create Demo Users
+                    </button>
+                    <div class="users-list" id="users-list">
+                        <div class="empty-state">No users yet. Create demo users to start.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transaction Form -->
+            <div class="tx-form-panel">
+                <div class="demo-card">
+                    <h3>New Transaction</h3>
+                    <div class="tx-form">
+                        <div class="input-group">
+                            <label>From</label>
+                            <select id="tx-sender">
+                                <option value="">Select sender</option>
+                            </select>
+                        </div>
+                        <div class="tx-arrow">→</div>
+                        <div class="input-group">
+                            <label>To</label>
+                            <select id="tx-receiver">
+                                <option value="">Select receiver</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Amount (₹)</label>
+                            <input type="number" id="tx-amount" value="3000" min="1">
+                        </div>
+                        <button class="btn btn-primary btn-full" onclick="executeTransaction()" id="tx-btn" disabled>
+                            Send with ZK Proof
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Transaction Result -->
+                <div class="demo-card tx-result-card" id="tx-result-card" style="display: none;">
+                    <h3>Transaction Result</h3>
+                    <div id="tx-result"></div>
+                </div>
+            </div>
+
+            <!-- Transaction History -->
+            <div class="tx-history-panel">
+                <div class="demo-card">
+                    <h3>Transaction History</h3>
+                    <div class="tx-history" id="tx-history">
+                        <div class="empty-state">No transactions yet.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- DLP Explorer Section -->
+    <section id="dlp-demo" class="section">
+        <div class="section-header">
+            <div class="section-badge">Interactive Demo</div>
+            <h2>Discrete Logarithm Problem</h2>
+            <p>Experience why DLP is computationally hard</p>
+        </div>
+
+        <div class="dlp-container">
+            <!-- DLP Explanation Card -->
+            <div class="demo-card dlp-explain-card">
+                <h3>The Problem</h3>
+                <div class="math-display">
+                    <div class="math-equation">
+                        <span class="math-var">g</span><sup class="math-var">x</sup>
+                        <span class="math-op">≡</span>
+                        <span class="math-var">h</span>
+                        <span class="math-op">(mod p)</span>
+                    </div>
+                    <p class="math-desc">Given g, h, and p — finding x is computationally infeasible</p>
+                </div>
+                <div class="dlp-visual">
+                    <div class="dlp-step">
+                        <div class="step-icon easy">✓</div>
+                        <div class="step-text">
+                            <strong>Easy:</strong> Compute g<sup>x</sup> mod p
+                            <span class="complexity">O(log n)</span>
+                        </div>
+                    </div>
+                    <div class="dlp-step">
+                        <div class="step-icon hard">✗</div>
+                        <div class="step-text">
+                            <strong>Hard:</strong> Find x from g<sup>x</sup> mod p
+                            <span class="complexity">O(√p) best known</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive DLP Calculator -->
+            <div class="demo-card dlp-calculator-card">
+                <h3>DLP Calculator</h3>
+                <p class="card-desc">Try computing modular exponentiation yourself</p>
+                <div class="calc-inputs">
+                    <div class="input-group">
+                        <label>Generator (g)</label>
+                        <input type="number" id="dlp-g" value="2" min="2" max="100">
+                    </div>
+                    <div class="input-group">
+                        <label>Exponent (x) <span class="secret-badge">SECRET</span></label>
+                        <input type="number" id="dlp-x" value="15" min="1" max="1000">
+                    </div>
+                    <div class="input-group">
+                        <label>Prime (p)</label>
+                        <input type="number" id="dlp-p" value="23" min="2" max="10000">
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-full" onclick="computeDLP()">
+                    Compute g<sup>x</sup> mod p
+                </button>
+                <div class="calc-result" id="dlp-result">
+                    <div class="result-label">Result (h):</div>
+                    <div class="result-value" id="dlp-result-value">—</div>
+                    <div class="result-note" id="dlp-result-note"></div>
+                </div>
+                <div class="calc-challenge" id="dlp-challenge">
+                    <div class="challenge-header">Challenge</div>
+                    <p>Given h = <span id="challenge-h">?</span>, g = <span id="challenge-g">?</span>, p = <span id="challenge-p">?</span></p>
+                    <p>Can you find x? <em>That's the DLP!</em></p>
+                </div>
+            </div>
+
+            <!-- Brute Force Visualizer -->
+            <div class="demo-card dlp-bruteforce-card">
+                <h3>Brute Force Attack Visualizer</h3>
+                <p class="card-desc">Watch how long it takes to solve DLP by trying every value</p>
+                <div class="bruteforce-controls">
+                    <div class="input-group">
+                        <label>Target (h)</label>
+                        <input type="number" id="bf-target" value="8" min="1">
+                    </div>
+                    <div class="input-group">
+                        <label>g</label>
+                        <input type="number" id="bf-g" value="2" min="2">
+                    </div>
+                    <div class="input-group">
+                        <label>p</label>
+                        <input type="number" id="bf-p" value="23" min="2">
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-full" onclick="startBruteForce()">
+                    Start Brute Force Attack
+                </button>
+                <div class="bruteforce-display" id="bf-display">
+                    <div class="bf-progress">
+                        <div class="bf-bar" id="bf-bar"></div>
+                    </div>
+                    <div class="bf-attempts" id="bf-attempts"></div>
+                    <div class="bf-result" id="bf-result"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ZK Proof Demo Section -->
+    <section id="zkp-demo" class="section">
+        <div class="section-header">
+            <div class="section-badge">Zero Knowledge</div>
+            <h2>Schnorr Protocol Demo</h2>
+            <p>Watch a zero-knowledge proof happen in real-time</p>
+        </div>
+
+        <div class="zkp-container">
+            <!-- Protocol Visualization -->
+            <div class="protocol-visual">
+                <div class="protocol-party prover-party">
+                    <div class="party-avatar prover-icon">P</div>
+                    <div class="party-name">Prover (You)</div>
+                    <div class="party-info">
+                        <div class="info-item">
+                            <span class="info-label">Balance:</span>
+                            <span class="info-value secret" id="prover-balance">₹10,000</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Commitment:</span>
+                            <span class="info-value" id="prover-commitment">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="protocol-messages" id="protocol-messages">
+                    <div class="message-placeholder">
+                        Start the protocol to see messages flow
+                    </div>
+                </div>
+
+                <div class="protocol-party verifier-party">
+                    <div class="party-avatar verifier-icon">V</div>
+                    <div class="party-name">Verifier (Bank)</div>
+                    <div class="party-info">
+                        <div class="info-item">
+                            <span class="info-label">Knows balance?</span>
+                            <span class="info-value" id="verifier-knows">No</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Convinced?</span>
+                            <span class="info-value" id="verifier-convinced">—</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ZKP Controls -->
+            <div class="zkp-controls">
+                <div class="demo-card">
+                    <h3>Configure Proof</h3>
+                    <div class="zkp-inputs">
+                        <div class="input-group">
+                            <label>Your Balance (₹)</label>
+                            <input type="number" id="zkp-balance" value="10000" min="0" max="100000">
+                        </div>
+                        <div class="input-group">
+                            <label>Transaction Amount (₹)</label>
+                            <input type="number" id="zkp-amount" value="3000" min="1" max="100000">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-full" id="zkp-start-btn" onclick="startZKProof()">
+                        Generate Zero-Knowledge Proof
+                    </button>
+                    <button class="btn btn-secondary btn-full" onclick="resetZKP()" style="margin-top: 8px;">
+                        Reset
+                    </button>
+                </div>
+
+                <!-- Protocol Steps -->
+                <div class="demo-card protocol-steps-card">
+                    <h3>Protocol Steps</h3>
+                    <div class="steps-list">
+                        <div class="step-item" id="step-1">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <strong>Commitment</strong>
+                                <p>Prover picks random r, sends C = g<sup>r</sup> mod p</p>
+                            </div>
+                        </div>
+                        <div class="step-item" id="step-2">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <strong>Challenge</strong>
+                                <p>Verifier sends random challenge c</p>
+                            </div>
+                        </div>
+                        <div class="step-item" id="step-3">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <strong>Response</strong>
+                                <p>Prover sends s = r + c × secret mod q</p>
+                            </div>
+                        </div>
+                        <div class="step-item" id="step-4">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <strong>Verification</strong>
+                                <p>Verifier checks g<sup>s</sup> = C × h<sup>c</sup> mod p</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Crypto Suite Section -->
+    <section id="crypto-suite" class="section">
+        <div class="section-header">
+            <div class="section-badge">Full Suite</div>
+            <h2>DLP Cryptographic Suite</h2>
+            <p>All 7 protocols built on the Discrete Logarithm Problem</p>
+        </div>
+
+        <div class="suite-grid">
+            <!-- Diffie-Hellman -->
+            <div class="suite-card" onclick="openSuiteDemo('dh')">
+                <div class="suite-icon">DH</div>
+                <h3>Diffie-Hellman</h3>
+                <p>Secure key exchange over insecure channels</p>
+                <div class="suite-tag">Key Exchange</div>
+                <button class="btn btn-small" onclick="event.stopPropagation(); openSuiteDemo('dh')">Try It</button>
+            </div>
+
+            <!-- ElGamal -->
+            <div class="suite-card" onclick="openSuiteDemo('elgamal')">
+                <div class="suite-icon">EG</div>
+                <h3>ElGamal Encryption</h3>
+                <p>Public-key encryption with homomorphic properties</p>
+                <div class="suite-tag">Encryption</div>
+                <button class="btn btn-small" onclick="event.stopPropagation(); openSuiteDemo('elgamal')">Try It</button>
+            </div>
+
+            <!-- Schnorr Signatures -->
+            <div class="suite-card" onclick="openSuiteDemo('signatures')">
+                <div class="suite-icon">Sig</div>
+                <h3>Digital Signatures</h3>
+                <p>Transaction authentication and non-repudiation</p>
+                <div class="suite-tag">Signatures</div>
+                <button class="btn btn-small" onclick="event.stopPropagation(); openSuiteDemo('signatures')">Try It</button>
+            </div>
+
+            <!-- Batch Verification -->
+            <div class="suite-card" onclick="openSuiteDemo('batch')">
+                <div class="suite-icon">BV</div>
+                <h3>Batch Verification</h3>
+                <p>Verify multiple proofs efficiently</p>
+                <div class="suite-tag">Optimization</div>
+                <button class="btn btn-small" onclick="event.stopPropagation(); openSuiteDemo('batch')">Try It</button>
+            </div>
+
+            <!-- Range Proofs -->
+            <div class="suite-card" onclick="openSuiteDemo('range')">
+                <div class="suite-icon">RP</div>
+                <h3>Range Proofs</h3>
+                <p>Prove values within limits without revealing them</p>
+                <div class="suite-tag">Compliance</div>
+                <button class="btn btn-small" onclick="event.stopPropagation(); openSuiteDemo('range')">Try It</button>
+            </div>
+
+            <!-- ZK Proofs -->
+            <div class="suite-card" onclick="openSuiteDemo('zkp')">
+                <div class="suite-icon">ZK</div>
+                <h3>Zero-Knowledge Proofs</h3>
+                <p>Prove knowledge without revealing secrets</p>
+                <div class="suite-tag">Privacy</div>
+                <button class="btn btn-small" onclick="event.stopPropagation(); openSuiteDemo('zkp')">Try It</button>
+            </div>
+
+            <!-- Commitments -->
+            <div class="suite-card" onclick="openSuiteDemo('commitments')">
+                <div class="suite-icon">PC</div>
+                <h3>Pedersen Commitments</h3>
+                <p>Hide values while binding to them</p>
+                <div class="suite-tag">Commitments</div>
+                <button class="btn btn-small" onclick="event.stopPropagation(); openSuiteDemo('commitments')">Try It</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Suite Demo Modal -->
+    <div class="modal-overlay" id="suite-modal" style="display: none;">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeSuiteDemo()">✕</button>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <div class="shield-icon">ZKP</div>
+                <span>ZKP Shield</span>
+            </div>
+            <div class="footer-info">
+                Privacy-Preserving UPI Transactions using DLP-based Zero-Knowledge Proofs
+            </div>
+            <div class="footer-tech">
+                Built with Python · Flask · DLP Cryptography · Schnorr Protocol
+            </div>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
