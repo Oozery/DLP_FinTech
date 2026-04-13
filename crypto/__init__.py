@@ -58,6 +58,18 @@ from .range_proofs import (
     UPIRangeValidator
 )
 
+from .dsa import (
+    DSASigner,
+    DSAVerifier
+)
+
+from .ecdsa import (
+    ECDSASigner,
+    ECDSAVerifier,
+    ECCurve,
+    ECPoint
+)
+
 __all__ = [
     # Core DLP
     'DLPParameters',
@@ -105,5 +117,15 @@ __all__ = [
     'RangeProver',
     'RangeVerifier',
     'BalanceRangeProver',
-    'UPIRangeValidator'
+    'UPIRangeValidator',
+    
+    # DSA
+    'DSASigner',
+    'DSAVerifier',
+    
+    # ECDSA
+    'ECDSASigner',
+    'ECDSAVerifier',
+    'ECCurve',
+    'ECPoint'
 ]
