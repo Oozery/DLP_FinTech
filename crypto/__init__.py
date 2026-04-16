@@ -30,6 +30,26 @@ from .ecc_schnorr import (
     ECBalanceProof,
 )
 
+from .ecc_diffie_hellman import (
+    ECDHParty,
+    ECDHKeyExchange,
+)
+
+from .ecc_elgamal import (
+    ECElGamalKeypair,
+    ECElGamalEncryption,
+    ECElGamalCiphertext,
+    ECElGamalHybrid,
+)
+
+from .ecc_signatures import (
+    ECSchnorrSignature,
+    ECSchnorrSigner,
+    ECSchnorrSigVerifier,
+    ECTransactionSigner,
+    ECTransactionVerifier,
+)
+
 from .batch_verification import (
     BatchVerifier,
     TransactionBatchVerifier,
@@ -111,6 +131,23 @@ __all__ = [
     'ECBalanceVerifier',
     'ECSchnorrProof',
     'ECBalanceProof',
+
+    # ECC Diffie-Hellman
+    'ECDHParty',
+    'ECDHKeyExchange',
+
+    # ECC ElGamal
+    'ECElGamalKeypair',
+    'ECElGamalEncryption',
+    'ECElGamalCiphertext',
+    'ECElGamalHybrid',
+
+    # ECC Schnorr Signatures
+    'ECSchnorrSignature',
+    'ECSchnorrSigner',
+    'ECSchnorrSigVerifier',
+    'ECTransactionSigner',
+    'ECTransactionVerifier',
     
     # Key Exchange
     'DiffieHellmanParty',
