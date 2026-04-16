@@ -89,7 +89,7 @@ def get_user_balance(user_id):
         'user_id': user.user_id,
         'name': user.name,
         'balance': user.balance,  # Only for demo
-        'balance_commitment': hex(user.balance_commitment),
+        'balance_commitment': hex(user.balance_commitment.x) if not user.balance_commitment.is_infinity else '0x0',
         'note': 'In production, actual balance would not be exposed'
     })
 

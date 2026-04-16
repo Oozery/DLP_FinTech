@@ -1,3 +1,4 @@
+
 # Schnorr vs DSA vs ECDSA — Protocol Comparison
 
 This document compares the three digital signature protocols implemented in this project, all rooted in the hardness of the Discrete Logarithm Problem (DLP).

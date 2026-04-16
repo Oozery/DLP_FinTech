@@ -21,10 +21,20 @@ from .schnorr_protocol import (
     ChunkedBalanceProof
 )
 
+from .ecc_schnorr import (
+    ECSchnorrProver,
+    ECSchnorrVerifier,
+    ECBalanceProver,
+    ECBalanceVerifier,
+    ECSchnorrProof,
+    ECBalanceProof,
+)
+
 from .batch_verification import (
     BatchVerifier,
     TransactionBatchVerifier,
-    PerformanceComparison
+    PerformanceComparison,
+    ECBatchVerifier,
 )
 
 from .diffie_hellman import (
@@ -92,6 +102,15 @@ __all__ = [
     'BatchVerifier',
     'TransactionBatchVerifier',
     'PerformanceComparison',
+    'ECBatchVerifier',
+
+    # ECC Schnorr ZK Proofs
+    'ECSchnorrProver',
+    'ECSchnorrVerifier',
+    'ECBalanceProver',
+    'ECBalanceVerifier',
+    'ECSchnorrProof',
+    'ECBalanceProof',
     
     # Key Exchange
     'DiffieHellmanParty',
