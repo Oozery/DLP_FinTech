@@ -416,9 +416,8 @@ async function executeTransaction() {
                     proof_included: true
                 },
                 proof: {
-                    commitment: '0x' + generateFakeHex(32),
-                    challenge: '0x' + generateFakeHex(16),
-                    response: '0x' + generateFakeHex(16)
+                    num_chunks: 1,
+                    chunk_proofs: [{ R_x: '0x' + generateFakeHex(32), s: '0x' + generateFakeHex(32) }]
                 }
             };
             handleTransactionResult(result, senderId, receiverId, amount);
@@ -441,6 +440,11 @@ function handleTransactionResult(data, senderId, receiverId, amount) {
     const receiverName = users[receiverId]?.name || receiverId;
 
     if (data.success) {
+        // Update local user balances
+        users[senderId].balance -= amount;
+        users[receiverId].balance += amount;
+        renderUsers();
+
         resultDiv.innerHTML = `
             <div class="tx-success">
                 <div style="font-size: 1.5rem; margin-bottom: 8px;">Transaction Successful</div>
