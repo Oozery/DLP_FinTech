@@ -993,6 +993,116 @@ async function runChunkedDemo() {
     btn.disabled = false;
 }
 
+// ===== Secure Pipeline =====
+let secureUsers = {};
+
+async function setupSecureUsers() {
+    const btn = document.getElementById('sec-setup-btn');
+    btn.disabled = true; btn.textContent = 'Creating...';
+    try {
+        const res = await fetch(`${API_BASE}/api/secure/setup`, { method: 'POST' });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+        secureUsers = {};
+        for (const [key, u] of Object.entries(data.users)) {
+            secureUsers[u.user_id] = { ...u, name: key.charAt(0).toUpperCase() + key.slice(1) };
+        }
+        // Render user cards
+        const div = document.getElementById('sec-users');
+        div.innerHTML = Object.values(secureUsers).map(u => `
+            <div class="user-card">
+                <div class="user-name">${u.name}</div>
+                <div class="user-balance">₹${u.balance.toLocaleString()}</div>
+                <div class="user-commitment" style="font-size:0.75rem;color:var(--text-secondary)">
+                    Enc: ${u.encryption_pub} · Sig: ${u.signing_pub}
+                </div>
+            </div>
+        `).join('');
+        // Populate dropdowns
+        const s = document.getElementById('sec-sender');
+        const r = document.getElementById('sec-receiver');
+        s.innerHTML = ''; r.innerHTML = '';
+        for (const u of Object.values(secureUsers)) {
+            s.innerHTML += `<option value="${u.user_id}">${u.name}</option>`;
+            r.innerHTML += `<option value="${u.user_id}">${u.name}</option>`;
+        }
+        document.getElementById('sec-tx-form').style.display = '';
+    } catch (e) {
+        document.getElementById('sec-users').innerHTML = `<div style="color:var(--danger)">${e.message}</div>`;
+    }
+    btn.disabled = false; btn.textContent = 'Users Created ✓';
+}
+
+async function runSecureTransaction() {
+    const senderId = document.getElementById('sec-sender').value;
+    const receiverId = document.getElementById('sec-receiver').value;
+    const amount = parseInt(document.getElementById('sec-amount').value);
+    if (senderId === receiverId) { alert('Select different sender and receiver'); return; }
+
+    const btn = document.getElementById('sec-tx-btn');
+    btn.disabled = true; btn.textContent = 'Running pipeline...';
+
+    try {
+        const res = await fetch(`${API_BASE}/api/secure/transaction`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sender_id: senderId, receiver_id: receiverId, amount })
+        });
+        const data = await res.json();
+        renderPipelineResult(data);
+        if (data.success && data.sender && data.receiver) {
+            secureUsers[senderId].balance = data.sender.balance;
+            secureUsers[receiverId].balance = data.receiver.balance;
+            setupSecureUsers.__rendered && setupSecureUsers.__rendered();
+            // Re-render user cards
+            const div = document.getElementById('sec-users');
+            div.innerHTML = Object.values(secureUsers).map(u => `
+                <div class="user-card">
+                    <div class="user-name">${u.name}</div>
+                    <div class="user-balance">₹${u.balance.toLocaleString()}</div>
+                </div>
+            `).join('');
+        }
+    } catch (e) {
+        document.getElementById('sec-steps').innerHTML = `<div style="color:var(--danger)">${e.message}</div>`;
+        document.getElementById('sec-result-card').style.display = 'block';
+    }
+    btn.disabled = false; btn.textContent = 'Run Full Crypto Pipeline';
+}
+
+function renderPipelineResult(data) {
+    const card = document.getElementById('sec-result-card');
+    card.style.display = 'block';
+    const div = document.getElementById('sec-steps');
+
+    if (!data.steps) {
+        div.innerHTML = `<div style="color:var(--danger)">Error: ${data.error}</div>`;
+        return;
+    }
+
+    const icons = { 1: '🔑', 2: '🔒', 3: '✍️', 4: '🛡️', 5: '✅', 6: '✅', 7: '🔓' };
+    div.innerHTML = data.steps.map(s => {
+        const ok = s.valid !== false;
+        return `<div class="pipeline-step ${ok ? '' : 'pipeline-step-fail'}">
+            <span class="pipeline-icon">${icons[s.step] || '•'}</span>
+            <div>
+                <strong>Step ${s.step}: ${s.name}</strong>
+                <div style="font-size:0.82rem;color:var(--text-secondary)">${s.detail}</div>
+                ${s.session_key_preview ? `<code style="font-size:0.75rem">Key: ${s.session_key_preview}</code>` : ''}
+                ${s.encrypted_preview ? `<code style="font-size:0.75rem">Encrypted: ${s.encrypted_preview}</code>` : ''}
+                ${s.signature ? `<code style="font-size:0.75rem">Sig R: ${s.signature.R_x?.slice(0,20)}...</code>` : ''}
+                ${s.proof ? `<code style="font-size:0.75rem">ZK chunks: ${s.proof.num_chunks}</code>` : ''}
+            </div>
+        </div>`;
+    }).join('') + (data.success
+        ? `<div class="tx-success" style="margin-top:12px;text-align:center;">
+            <strong>Transaction Complete</strong> — ₹${data.amount.toLocaleString()} transferred securely
+          </div>`
+        : `<div class="tx-failure" style="margin-top:12px;text-align:center;">
+            <strong>Failed:</strong> ${data.error}
+          </div>`);
+}
+
 // ===== Benchmark =====
 async function runBenchmark() {
     const btn = document.getElementById('bench-btn');

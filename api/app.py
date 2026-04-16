@@ -233,6 +233,43 @@ def chunked_balance_demo():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+from backend.secure_transaction_service import SecureTransactionService
+secure_service = SecureTransactionService()
+
+
+@app.route('/api/secure/setup', methods=['POST'])
+def secure_setup():
+    """Create demo users with full ECC key material."""
+    try:
+        alice = secure_service.create_user('Alice', 10000)
+        bob = secure_service.create_user('Bob', 5000)
+        charlie = secure_service.create_user('Charlie', 15000)
+        return jsonify({
+            'success': True,
+            'users': {
+                'alice': alice.to_dict(),
+                'bob': bob.to_dict(),
+                'charlie': charlie.to_dict(),
+            }
+        }), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/secure/transaction', methods=['POST'])
+def secure_transaction():
+    """Run full crypto pipeline: ECDH → encrypt → sign → ZK prove → verify → decrypt."""
+    data = request.get_json()
+    if not data or not all(k in data for k in ('sender_id', 'receiver_id', 'amount')):
+        return jsonify({'error': 'Missing required fields'}), 400
+    try:
+        result = secure_service.process_secure_transaction(
+            data['sender_id'], data['receiver_id'], int(data['amount']))
+        return jsonify(result), 200 if result['success'] else 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/benchmark', methods=['GET'])
 def run_benchmark():
     """Run ECC Schnorr ZK vs DLP-Schnorr vs DSA vs ECDSA comparison."""

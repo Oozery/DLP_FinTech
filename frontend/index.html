@@ -20,6 +20,7 @@
         <div class="nav-links">
             <a href="#hero" class="nav-link active" data-section="hero">Home</a>
             <a href="#transactions" class="nav-link" data-section="transactions">Transactions</a>
+            <a href="#secure-pipeline" class="nav-link" data-section="secure-pipeline">Secure Pipeline</a>
             <a href="#dlp-ecc-compare" class="nav-link" data-section="dlp-ecc-compare">DLP vs ECC</a>
             <a href="#zkp-demo" class="nav-link" data-section="zkp-demo">ZK Proofs</a>
             <a href="#chunked-demo" class="nav-link" data-section="chunked-demo">Chunking</a>
@@ -142,6 +143,50 @@
                         <div class="empty-state">No transactions yet.</div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Secure Pipeline Section -->
+    <section id="secure-pipeline" class="section">
+        <div class="section-header">
+            <div class="section-badge">Full Crypto Pipeline</div>
+            <h2>Secure Transaction Pipeline</h2>
+            <p>ECDH → Encrypt → Sign → ZK Prove → Verify → Decrypt — all on secp256k1</p>
+        </div>
+
+        <div class="pipeline-container">
+            <div class="demo-card">
+                <h3>Setup &amp; Transact</h3>
+                <button class="btn btn-secondary btn-full" onclick="setupSecureUsers()" id="sec-setup-btn">
+                    Create Secure Users
+                </button>
+                <div id="sec-users" style="margin-top:12px;"></div>
+
+                <div class="tx-form" id="sec-tx-form" style="display:none; margin-top:16px;">
+                    <div class="input-group">
+                        <label>From</label>
+                        <select id="sec-sender"></select>
+                    </div>
+                    <div class="tx-arrow">→</div>
+                    <div class="input-group">
+                        <label>To</label>
+                        <select id="sec-receiver"></select>
+                    </div>
+                    <div class="input-group">
+                        <label>Amount (₹)</label>
+                        <input type="number" id="sec-amount" value="3000" min="1">
+                    </div>
+                    <button class="btn btn-primary btn-full" onclick="runSecureTransaction()" id="sec-tx-btn">
+                        Run Full Crypto Pipeline
+                    </button>
+                </div>
+            </div>
+
+            <!-- Pipeline steps result -->
+            <div class="demo-card" id="sec-result-card" style="display:none;">
+                <h3>Pipeline Steps</h3>
+                <div id="sec-steps"></div>
             </div>
         </div>
     </section>

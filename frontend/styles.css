@@ -1330,3 +1330,40 @@ body {
     color: var(--text-primary);
     flex-shrink: 0;
 }
+
+/* ===== Secure Pipeline ===== */
+.pipeline-container {
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.pipeline-step {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 12px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.03);
+    margin-bottom: 8px;
+}
+
+.pipeline-step code {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.75rem;
+    color: var(--accent-primary);
+}
+
+.pipeline-step-fail {
+    border-left: 3px solid var(--danger);
+}
+
+.pipeline-icon {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+    width: 28px;
+    text-align: center;
+}
