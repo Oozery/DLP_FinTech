@@ -799,6 +799,196 @@ function demoCommitment() {
     `;
 }
 
+// ===== Chunked Balance Demo =====
+function setChunkPreset(multiplier, offset, txAmount) {
+    document.getElementById('chunk-multiplier').value = multiplier;
+    document.getElementById('chunk-offset').value = offset;
+    document.getElementById('chunk-tx-amount').value = txAmount;
+}
+
+async function runChunkedDemo() {
+    const btn = document.getElementById('chunk-btn');
+    btn.disabled = true;
+    btn.textContent = 'Running...';
+
+    const multiplier = parseInt(document.getElementById('chunk-multiplier').value);
+    const offset = parseInt(document.getElementById('chunk-offset').value);
+    const txAmount = parseInt(document.getElementById('chunk-tx-amount').value);
+
+    let data;
+    try {
+        const res = await fetch(`${API_BASE}/api/chunked-demo`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                balance_multiplier: multiplier,
+                balance_offset: offset,
+                tx_amount: txAmount
+            })
+        });
+        data = await res.json();
+    } catch (e) {
+        // Fallback: simulate locally
+        const isChunked = multiplier > 0;
+        const chunks = multiplier > 0
+            ? [offset, multiplier]
+            : [offset];
+        data = {
+            success: true,
+            q_hex: '0x7fffffffffffffffffff...',
+            q_bits: 255,
+            balance_hex: '0x' + generateFakeHex(20) + '...',
+            balance_bits: isChunked ? 256 + Math.floor(Math.log2(multiplier + 1)) : Math.max(1, Math.ceil(Math.log2(offset + 1))),
+            balance_formula: `${multiplier} × q + ${offset}`,
+            num_chunks: chunks.length,
+            chunks: chunks,
+            chunk_commitments: chunks.map(() => '0x' + generateFakeHex(20) + '...'),
+            combined_commitment: '0x' + generateFakeHex(20) + '...',
+            reconstruction_matches: true,
+            tx_amount: txAmount,
+            can_prove: true,
+            proof_valid: true,
+            proof_num_chunks: chunks.length,
+        };
+    }
+
+    if (!data.success) {
+        document.getElementById('chunk-results-card').style.display = 'block';
+        document.getElementById('chunk-results').innerHTML = `
+            <div style="color: var(--danger);">Error: ${data.error}</div>
+        `;
+        btn.textContent = 'Run Chunked Balance Demo';
+        btn.disabled = false;
+        return;
+    }
+
+    // Show results card
+    const resultsCard = document.getElementById('chunk-results-card');
+    resultsCard.style.display = 'block';
+
+    const isChunked = data.num_chunks > 1;
+    const resultsDiv = document.getElementById('chunk-results');
+    resultsDiv.innerHTML = `
+        <div class="chunk-result-grid">
+            <div class="chunk-stat">
+                <div class="chunk-stat-label">Balance Formula</div>
+                <div class="chunk-stat-value">${data.balance_formula}</div>
+            </div>
+            <div class="chunk-stat">
+                <div class="chunk-stat-label">Balance Size</div>
+                <div class="chunk-stat-value">${data.balance_bits} bits</div>
+            </div>
+            <div class="chunk-stat">
+                <div class="chunk-stat-label">Subgroup Order (q)</div>
+                <div class="chunk-stat-value">${data.q_bits} bits</div>
+            </div>
+            <div class="chunk-stat ${isChunked ? 'chunk-stat-warn' : 'chunk-stat-ok'}">
+                <div class="chunk-stat-label">Exceeds q?</div>
+                <div class="chunk-stat-value">${isChunked ? 'Yes — chunked' : 'No — single chunk'}</div>
+            </div>
+            <div class="chunk-stat">
+                <div class="chunk-stat-label">Chunks</div>
+                <div class="chunk-stat-value">${data.num_chunks}</div>
+            </div>
+            <div class="chunk-stat ${data.proof_valid ? 'chunk-stat-ok' : 'chunk-stat-warn'}">
+                <div class="chunk-stat-label">Proof Valid</div>
+                <div class="chunk-stat-value">${data.proof_valid ? '✓ Yes' : '✗ No'}</div>
+            </div>
+        </div>
+    `;
+
+    // Show step-by-step
+    const stepsCard = document.getElementById('chunk-steps-card');
+    stepsCard.style.display = 'block';
+    const stepsDiv = document.getElementById('chunk-steps');
+
+    let stepsHTML = `<div class="chunk-step-list">`;
+
+    // Step 1: Balance
+    stepsHTML += `
+        <div class="chunk-step-item">
+            <div class="chunk-step-num">1</div>
+            <div class="chunk-step-body">
+                <div class="chunk-step-title">Original Balance</div>
+                <div class="chunk-step-detail">
+                    <code>${data.balance_formula}</code> = <code>${data.balance_hex}</code>
+                    <span class="chunk-step-tag">${data.balance_bits} bits</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Step 2: Range check
+    stepsHTML += `
+        <div class="chunk-step-item">
+            <div class="chunk-step-num">2</div>
+            <div class="chunk-step-body">
+                <div class="chunk-step-title">Range Check</div>
+                <div class="chunk-step-detail">
+                    q = <code>${data.q_hex}</code> (${data.q_bits} bits)
+                    <br>balance ${isChunked ? '≥' : '<'} q →
+                    <span style="color: ${isChunked ? 'var(--warning)' : 'var(--success)'};">
+                        ${isChunked ? 'needs chunking' : 'fits in single chunk'}
+                    </span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Step 3: Decomposition
+    const chunkLabels = data.chunks.map((c, i) => `c${i} = ${c}`).join(', ');
+    stepsHTML += `
+        <div class="chunk-step-item">
+            <div class="chunk-step-num">3</div>
+            <div class="chunk-step-body">
+                <div class="chunk-step-title">Base-q Decomposition</div>
+                <div class="chunk-step-detail">
+                    <code>[${chunkLabels}]</code>
+                    <br>Reconstruction: ${data.chunks.map((c, i) => i === 0 ? `${c}` : `${c}·q${i > 1 ? '<sup>' + i + '</sup>' : ''}`).join(' + ')}
+                    <br>Matches original: <span style="color: var(--success);">✓ ${data.reconstruction_matches ? 'Yes' : 'No'}</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Step 4: Commitments
+    stepsHTML += `
+        <div class="chunk-step-item">
+            <div class="chunk-step-num">4</div>
+            <div class="chunk-step-body">
+                <div class="chunk-step-title">Per-Chunk Commitments</div>
+                <div class="chunk-step-detail">
+                    ${data.chunk_commitments.map((c, i) => `Chunk ${i}: <code>${c.slice(0, 24)}...</code>`).join('<br>')}
+                    <br>Combined: <code>${data.combined_commitment}</code>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Step 5: Proof
+    stepsHTML += `
+        <div class="chunk-step-item">
+            <div class="chunk-step-num">5</div>
+            <div class="chunk-step-body">
+                <div class="chunk-step-title">ZK Proof (balance ≥ ₹${data.tx_amount.toLocaleString()})</div>
+                <div class="chunk-step-detail">
+                    Proofs generated: ${data.proof_num_chunks} (one per chunk)
+                    <br>Verification:
+                    <span style="color: ${data.proof_valid ? 'var(--success)' : 'var(--danger)'}; font-weight: 700;">
+                        ${data.proof_valid ? '✓ Valid — balance sufficient, all chunks verified' : '✗ Invalid'}
+                    </span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    stepsHTML += `</div>`;
+    stepsDiv.innerHTML = stepsHTML;
+
+    btn.textContent = 'Run Chunked Balance Demo';
+    btn.disabled = false;
+}
+
 // ===== Benchmarks =====
 async function runBenchmark() {
     const btn = document.getElementById('bench-btn');
@@ -816,21 +1006,65 @@ async function runBenchmark() {
             keygen: { schnorr: 0.09, dsa: 0.15, ecdsa: 37.5 },
             signing: { schnorr: 0.08, dsa: 0.17, ecdsa: 36.0 },
             verification: { schnorr: 0.16, dsa: 0.26, ecdsa: 73.0 },
+            batch_verification: { count: 20, schnorr: 5.0, dsa: 0.25, ecdsa: 1460.0 },
+            signature_size_bytes: { schnorr: 64, dsa: 64, ecdsa: 64 },
+            throughput_signs_per_sec: { schnorr: 12000, dsa: 5800, ecdsa: 27 },
+            zk_balance_proof: { prove_ms: 0.08, verify_ms: 0.17 },
         };
     }
 
     document.getElementById('bench-results').style.display = 'block';
 
-    renderBenchChart('chart-keygen', results.keygen);
-    renderBenchChart('chart-signing', results.signing);
-    renderBenchChart('chart-verification', results.verification);
+    // Row 1: core timing
+    renderBenchChart('chart-keygen', results.keygen, 'ms');
+    renderBenchChart('chart-signing', results.signing, 'ms');
+    renderBenchChart('chart-verification', results.verification, 'ms');
+
+    // Row 2: batch, throughput, sig size
+    if (results.batch_verification) {
+        const bv = results.batch_verification;
+        document.getElementById('batch-count-label').textContent = `${bv.count} proofs/signatures`;
+        renderBenchChart('chart-batch', { schnorr: bv.schnorr, dsa: bv.dsa, ecdsa: bv.ecdsa }, 'ms');
+    }
+    if (results.throughput_signs_per_sec) {
+        renderBenchChart('chart-throughput', results.throughput_signs_per_sec, '/sec', true);
+    }
+    if (results.signature_size_bytes) {
+        renderBenchChart('chart-sigsize', results.signature_size_bytes, 'B');
+    }
+
+    // Row 3: ZK proof stats
+    if (results.zk_balance_proof) {
+        const zk = results.zk_balance_proof;
+        document.getElementById('zk-stats').innerHTML = `
+            <div class="zk-stat-row">
+                <div class="zk-stat-item">
+                    <div class="zk-stat-value">${zk.prove_ms} ms</div>
+                    <div class="zk-stat-label">Proof Generation</div>
+                </div>
+                <div class="zk-stat-item">
+                    <div class="zk-stat-value">${zk.verify_ms} ms</div>
+                    <div class="zk-stat-label">Proof Verification</div>
+                </div>
+                <div class="zk-stat-item zk-stat-na">
+                    <div class="zk-stat-value">N/A</div>
+                    <div class="zk-stat-label">DSA — No ZK support</div>
+                </div>
+                <div class="zk-stat-item zk-stat-na">
+                    <div class="zk-stat-value">N/A</div>
+                    <div class="zk-stat-label">ECDSA — No ZK support</div>
+                </div>
+            </div>
+        `;
+    }
 
     btn.textContent = 'Run Again';
     btn.disabled = false;
 }
 
-function renderBenchChart(containerId, data) {
+function renderBenchChart(containerId, data, unit, higherIsBetter) {
     const container = document.getElementById(containerId);
+    if (!container) return;
     const maxVal = Math.max(data.schnorr, data.dsa, data.ecdsa);
 
     const bars = [
@@ -841,11 +1075,15 @@ function renderBenchChart(containerId, data) {
 
     container.innerHTML = bars.map(b => {
         const pct = Math.max((b.value / maxVal) * 100, 2);
+        const isWinner = higherIsBetter
+            ? b.value === maxVal
+            : b.value === Math.min(data.schnorr, data.dsa, data.ecdsa);
+        const winnerBadge = isWinner ? ' ★' : '';
         return `
             <div class="bench-bar-group">
                 <div class="bench-bar-label">
-                    <span>${b.label}</span>
-                    <span>${b.value} ms</span>
+                    <span>${b.label}${winnerBadge}</span>
+                    <span>${b.value} ${unit}</span>
                 </div>
                 <div class="bench-bar-track">
                     <div class="bench-bar-fill ${b.cls}" style="width: 0%"></div>

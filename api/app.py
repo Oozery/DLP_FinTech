@@ -186,5 +186,61 @@ def run_benchmark():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/chunked-demo', methods=['POST'])
+def chunked_balance_demo():
+    """
+    Demo: prove balance that exceeds DLP subgroup order (q).
+    Body: { "balance_multiplier": number, "balance_offset": number, "tx_amount": number }
+    balance = multiplier * q + offset
+    """
+    from crypto import DLPParameters, BalanceProver, BalanceVerifier
+
+    data = request.get_json() or {}
+    multiplier = int(data.get('balance_multiplier', 2))
+    offset = int(data.get('balance_offset', 5000))
+    tx_amount = int(data.get('tx_amount', 1000))
+
+    _, _, q = DLPParameters.get_parameters()
+    balance = multiplier * q + offset
+
+    try:
+        prover = BalanceProver(balance)
+        chunks = prover.chunks
+        chunk_commitments = [hex(c) for c in prover.get_chunk_commitments()]
+        combined_commitment = hex(prover.get_balance_commitment())
+
+        # Reconstruct to prove correctness
+        reconstructed = sum(c * (q ** i) for i, c in enumerate(chunks))
+
+        # Generate and verify proof
+        can_prove, proof = prover.prove_sufficient_balance(tx_amount)
+        verifier = BalanceVerifier()
+        valid = False
+        if can_prove:
+            valid = verifier.verify_balance_proof(
+                prover.get_balance_commitment(), proof,
+                chunk_commitments=prover.get_chunk_commitments())
+
+        return jsonify({
+            'success': True,
+            'q_hex': hex(q)[:20] + '...',
+            'q_bits': q.bit_length(),
+            'balance_hex': hex(balance)[:20] + '...',
+            'balance_bits': balance.bit_length(),
+            'balance_formula': f'{multiplier} × q + {offset}',
+            'num_chunks': len(chunks),
+            'chunks': chunks,
+            'chunk_commitments': chunk_commitments,
+            'combined_commitment': combined_commitment[:30] + '...',
+            'reconstruction_matches': reconstructed == balance,
+            'tx_amount': tx_amount,
+            'can_prove': can_prove,
+            'proof_valid': valid,
+            'proof_num_chunks': proof.num_chunks if proof else 0,
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

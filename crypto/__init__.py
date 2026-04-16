@@ -17,7 +17,8 @@ from .schnorr_protocol import (
     SchnorrProver,
     SchnorrVerifier,
     BalanceProver,
-    BalanceVerifier
+    BalanceVerifier,
+    ChunkedBalanceProof
 )
 
 from .batch_verification import (
@@ -85,6 +86,7 @@ __all__ = [
     'SchnorrVerifier',
     'BalanceProver',
     'BalanceVerifier',
+    'ChunkedBalanceProof',
     
     # Batch Verification
     'BatchVerifier',

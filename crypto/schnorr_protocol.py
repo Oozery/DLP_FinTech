@@ -10,7 +10,7 @@ Protocol Flow:
 """
 
 import secrets
-from typing import Tuple
+from typing import Tuple, List
 from .dlp_core import (
     DLPParameters, 
     mod_exp, 
@@ -30,8 +30,12 @@ class SchnorrProver:
         Initialize prover with a secret value
         secret: The discrete logarithm we want to prove knowledge of
         """
-        self.secret = secret
         self.p, self.g, self.q = DLPParameters.get_parameters()
+        if secret < 1 or secret >= self.q:
+            raise ValueError(
+                f"Secret must be in range [1, {self.q - 1}], got {secret}"
+            )
+        self.secret = secret
         self.public_value = mod_exp(self.g, secret, self.p)
         self.random_value = None
         self.commitment = None
@@ -49,21 +53,14 @@ class SchnorrProver:
         """
         Step 3: Generate response to challenge
         response = r + challenge * secret mod q
-        
-        This is where the magic happens:
-        - If prover doesn't know secret, they can't compute valid response
-        - Response doesn't reveal secret due to random r
         """
         response = (self.random_value + challenge * self.secret) % self.q
         return response
     
     def create_proof(self, challenge: int) -> DLPProof:
-        """
-        Create a complete ZK proof
-        """
+        """Create a complete ZK proof"""
         if self.commitment is None:
             self.create_commitment()
-        
         response = self.generate_response(challenge)
         return DLPProof(self.commitment, challenge, response)
 
@@ -78,90 +75,166 @@ class SchnorrVerifier:
         self.p, self.g, self.q = DLPParameters.get_parameters()
     
     def generate_challenge(self) -> int:
-        """
-        Step 2: Generate random challenge
-        Challenge ensures prover can't pre-compute fake proofs
-        """
+        """Generate random challenge"""
         return secrets.randbelow(self.q)
     
     def verify_proof(self, public_value: int, proof: DLPProof) -> bool:
         """
-        Step 4: Verify the proof
+        Verify the proof:
         Check: g^response = commitment * public_value^challenge mod p
-        
-        Why this works:
-        g^response = g^(r + c*secret) = g^r * g^(c*secret) = g^r * (g^secret)^c
-                   = commitment * public_value^challenge
-        
-        Security: If prover doesn't know secret, they can't create valid response
         """
         left_side = mod_exp(self.g, proof.response, self.p)
         right_side = (proof.commitment * mod_exp(public_value, proof.challenge, self.p)) % self.p
-        
         return left_side == right_side
+
+
+def _split_into_chunks(value: int, chunk_limit: int) -> List[int]:
+    """
+    Split a large value into chunks that each fit within [1, chunk_limit).
+    Uses base-q decomposition: value = chunks[0] + chunks[1]*q + chunks[2]*q^2 + ...
+    
+    For values within range, returns a single-element list (no overhead).
+    """
+    if value <= 0:
+        return [0]
+    
+    chunks = []
+    remaining = value
+    while remaining > 0:
+        chunk = remaining % chunk_limit
+        chunks.append(chunk)
+        remaining //= chunk_limit
+    return chunks
+
+
+class ChunkedBalanceProof:
+    """
+    Proof for a balance that may exceed the DLP subgroup order.
+    Contains one DLPProof per chunk of the balance.
+    """
+    
+    def __init__(self, chunk_proofs: List[DLPProof], num_chunks: int):
+        self.chunk_proofs = chunk_proofs
+        self.num_chunks = num_chunks
+    
+    def to_dict(self) -> dict:
+        return {
+            'chunk_proofs': [p.to_dict() for p in self.chunk_proofs],
+            'num_chunks': self.num_chunks
+        }
 
 
 class BalanceProver:
     """
-    Specialized prover for balance verification
-    Proves: balance >= required_amount without revealing exact balance
+    Specialized prover for balance verification.
+    Automatically chunks the balance if it exceeds the DLP subgroup order (q).
+    
+    For balances within [1, q-1], behaves identically to a single Schnorr proof.
+    For balances >= q, splits into base-q chunks and proves each independently.
     """
     
+    MAX_SINGLE_CHUNK = DLPParameters.Q - 1
+    
     def __init__(self, balance: int):
-        """
-        Initialize with user's actual balance
-        balance: The secret balance amount
-        """
+        if balance < 0:
+            raise ValueError(f"Balance cannot be negative: {balance}")
+        
         self.balance = balance
         self.p, self.g, self.q = DLPParameters.get_parameters()
-        # Commitment to balance: g^balance mod p
-        self.balance_commitment = mod_exp(self.g, balance, self.p)
+        
+        # Split balance into DLP-safe chunks
+        self.chunks = _split_into_chunks(balance, self.q)
+        
+        # Commitment per chunk: g^chunk_i mod p
+        # Combined commitment = product of all chunk commitments (homomorphic)
+        self.chunk_commitments = []
+        combined = 1
+        for chunk in self.chunks:
+            c = mod_exp(self.g, chunk, self.p) if chunk > 0 else 1
+            self.chunk_commitments.append(c)
+            combined = (combined * c) % self.p
+        self.balance_commitment = combined
     
-    def prove_sufficient_balance(self, required_amount: int) -> Tuple[bool, DLPProof]:
+    def prove_sufficient_balance(self, required_amount: int) -> Tuple[bool, ChunkedBalanceProof]:
         """
-        Prove that balance >= required_amount
+        Prove that balance >= required_amount.
+        Generates a proof per chunk; verifier checks all chunks together.
         
         Returns: (can_prove, proof)
-        - can_prove: False if balance is insufficient
-        - proof: ZK proof of balance sufficiency
         """
         if self.balance < required_amount:
             return False, None
         
-        # Create proof of knowledge of balance
-        prover = SchnorrProver(self.balance)
-        commitment = prover.create_commitment()
+        chunk_proofs = []
+        for chunk in self.chunks:
+            if chunk == 0:
+                # Zero chunk: trivial proof (commitment=1, no secret)
+                chunk_proofs.append(DLPProof(1, 0, 0))
+                continue
+            
+            prover = SchnorrProver(chunk)
+            prover.create_commitment()
+            challenge = secrets.randbelow(self.q)
+            proof = prover.create_proof(challenge)
+            chunk_proofs.append(proof)
         
-        # Generate challenge (in real system, verifier would send this)
-        challenge = secrets.randbelow(self.q)
-        
-        # Create proof
-        proof = prover.create_proof(challenge)
-        
-        return True, proof
+        return True, ChunkedBalanceProof(chunk_proofs, len(self.chunks))
     
     def get_balance_commitment(self) -> int:
         """
-        Get public commitment to balance
-        This can be shared without revealing the actual balance
+        Get public commitment to balance.
+        This is the product of all chunk commitments.
         """
         return self.balance_commitment
+    
+    def get_chunk_commitments(self) -> List[int]:
+        """Get individual chunk commitments (needed for verification)."""
+        return self.chunk_commitments
 
 
 class BalanceVerifier:
     """
-    Verifier for balance proofs
-    Verifies balance sufficiency without learning the actual balance
+    Verifier for balance proofs.
+    Handles both single-chunk and multi-chunk (large balance) proofs.
     """
     
     def __init__(self):
         self.verifier = SchnorrVerifier()
+        self.p, _, _ = DLPParameters.get_parameters()
     
-    def verify_balance_proof(self, balance_commitment: int, proof: DLPProof) -> bool:
+    def verify_balance_proof(
+        self,
+        balance_commitment: int,
+        proof: ChunkedBalanceProof,
+        chunk_commitments: List[int] = None
+    ) -> bool:
         """
-        Verify that the prover knows a balance that corresponds to the commitment
+        Verify a chunked balance proof.
         
-        Note: This verifies knowledge of balance, not the sufficiency check
-        In a complete system, you'd also verify range proofs
+        1. If chunk_commitments provided, verify their product matches balance_commitment
+        2. Verify each chunk's Schnorr proof against its commitment
         """
-        return self.verifier.verify_proof(balance_commitment, proof)
+        if chunk_commitments:
+            # Verify chunk commitments multiply to the overall commitment
+            product = 1
+            for cc in chunk_commitments:
+                product = (product * cc) % self.p
+            if product != balance_commitment:
+                return False
+            
+            # Verify each chunk proof
+            for cc, cp in zip(chunk_commitments, proof.chunk_proofs):
+                if cp.commitment == 1 and cp.challenge == 0 and cp.response == 0:
+                    # Zero chunk — skip
+                    continue
+                if not self.verifier.verify_proof(cc, cp):
+                    return False
+            return True
+        
+        # Fallback: single-chunk backward compatibility
+        if proof.num_chunks == 1:
+            cp = proof.chunk_proofs[0]
+            return self.verifier.verify_proof(balance_commitment, cp)
+        
+        # Multi-chunk without chunk_commitments — can't fully verify
+        return False

@@ -41,8 +41,10 @@ class RangeProver:
     """
     
     def __init__(self, value: int):
-        self.value = value
         self.p, self.g, self.q = DLPParameters.get_parameters()
+        if value < 0:
+            raise ValueError(f"Value cannot be negative: {value}")
+        self.value = value
     
     def prove_in_range(self, min_value: int, max_value: int) -> Tuple[bool, RangeProof]:
         """
@@ -149,6 +151,8 @@ class BalanceRangeProver:
     """
     
     def __init__(self, balance: int):
+        if balance < 0:
+            raise ValueError(f"Balance cannot be negative: {balance}")
         self.balance = balance
         self.prover = RangeProver(balance)
     

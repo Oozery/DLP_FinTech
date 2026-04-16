@@ -23,6 +23,7 @@
             <a href="#benchmarks" class="nav-link" data-section="benchmarks">Benchmarks</a>
             <a href="#dlp-demo" class="nav-link" data-section="dlp-demo">DLP Explorer</a>
             <a href="#zkp-demo" class="nav-link" data-section="zkp-demo">ZK Proofs</a>
+            <a href="#chunked-demo" class="nav-link" data-section="chunked-demo">Chunking</a>
             <a href="#crypto-suite" class="nav-link" data-section="crypto-suite">Crypto Suite</a>
         </div>
         <div class="nav-status">
@@ -159,12 +160,12 @@
                     Run Benchmark
                 </button>
                 <p class="card-desc" style="margin-top: 12px; margin-bottom: 0;">
-                    Runs key generation, signing, and verification for each scheme
+                    Runs 7 benchmarks across key generation, signing, verification, batch ops, throughput, size, and ZK proofs
                 </p>
             </div>
 
             <div id="bench-results" style="display: none;">
-                <!-- Bar Charts -->
+                <!-- Row 1: Core timing charts -->
                 <div class="bench-charts">
                     <div class="demo-card">
                         <h3>Key Generation (ms)</h3>
@@ -178,6 +179,32 @@
                         <h3>Verification (ms)</h3>
                         <div class="bench-chart" id="chart-verification"></div>
                     </div>
+                </div>
+
+                <!-- Row 2: Batch, Throughput, Signature Size -->
+                <div class="bench-charts" style="margin-top: 20px;">
+                    <div class="demo-card">
+                        <h3>Batch Verification (ms)</h3>
+                        <p class="card-desc" id="batch-count-label">20 proofs/signatures</p>
+                        <div class="bench-chart" id="chart-batch"></div>
+                    </div>
+                    <div class="demo-card">
+                        <h3>Signing Throughput</h3>
+                        <p class="card-desc">Operations per second (higher is better)</p>
+                        <div class="bench-chart" id="chart-throughput"></div>
+                    </div>
+                    <div class="demo-card">
+                        <h3>Signature Size</h3>
+                        <p class="card-desc">Bytes per signature</p>
+                        <div class="bench-chart" id="chart-sigsize"></div>
+                    </div>
+                </div>
+
+                <!-- Row 3: ZK Balance Proof (Schnorr exclusive) -->
+                <div class="demo-card bench-zk-card" style="margin-top: 20px;">
+                    <h3>ZK Balance Proof — Schnorr Only</h3>
+                    <p class="card-desc">Prove sufficient balance without revealing it. DSA and ECDSA cannot do this.</p>
+                    <div class="bench-zk-stats" id="zk-stats"></div>
                 </div>
 
                 <!-- Feature Table -->
@@ -194,7 +221,7 @@
                         </thead>
                         <tbody>
                             <tr><td>ZK Proof Support</td><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td></tr>
-                            <tr><td>Batch Verification</td><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td></tr>
+                            <tr><td>Batch Verification</td><td class="yes">Native</td><td class="no">Loop</td><td class="no">Loop</td></tr>
                             <tr><td>Signature Aggregation</td><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td></tr>
                             <tr><td>Security Proof</td><td class="yes">Tight</td><td class="neutral">Partial</td><td class="neutral">Partial</td></tr>
                             <tr><td>NIST Standardized</td><td class="neutral">No</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
@@ -420,6 +447,91 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Chunked Balance Demo Section -->
+    <section id="chunked-demo" class="section">
+        <div class="section-header">
+            <div class="section-badge">Edge Case</div>
+            <h2>Balance Beyond DLP Range</h2>
+            <p>What happens when x exceeds the subgroup order q? We chunk it.</p>
+        </div>
+
+        <div class="chunked-container">
+            <!-- Explanation Card -->
+            <div class="demo-card chunked-explain-card">
+                <h3>The Problem</h3>
+                <div class="math-display">
+                    <div class="math-equation">
+                        <span class="math-var">x</span>
+                        <span class="math-op">≥</span>
+                        <span class="math-var">q</span>
+                        <span class="math-op">→</span>
+                        <span class="math-var">g<sup>x</sup> mod p</span>
+                        <span class="math-op">wraps around</span>
+                    </div>
+                    <p class="math-desc">If balance (x) exceeds q, modular arithmetic breaks the proof. Solution: base-q decomposition.</p>
+                </div>
+                <div class="dlp-visual">
+                    <div class="dlp-step">
+                        <div class="step-icon hard">✗</div>
+                        <div class="step-text">
+                            <strong>Without chunking:</strong> x ≥ q causes g<sup>x</sup> = g<sup>(x mod q)</sup>, proof breaks
+                        </div>
+                    </div>
+                    <div class="dlp-step">
+                        <div class="step-icon easy">✓</div>
+                        <div class="step-text">
+                            <strong>With chunking:</strong> x = c₀ + c₁·q + c₂·q² + ..., each cᵢ &lt; q
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Demo -->
+            <div class="chunked-interactive">
+                <div class="demo-card">
+                    <h3>Configure Balance</h3>
+                    <p class="card-desc">Set a balance that exceeds q using: balance = multiplier × q + offset</p>
+                    <div class="chunked-inputs">
+                        <div class="input-group">
+                            <label>Multiplier (× q)</label>
+                            <input type="number" id="chunk-multiplier" value="2" min="0" max="100">
+                        </div>
+                        <div class="input-group">
+                            <label>Offset</label>
+                            <input type="number" id="chunk-offset" value="5000" min="0">
+                        </div>
+                        <div class="input-group">
+                            <label>Transaction Amount</label>
+                            <input type="number" id="chunk-tx-amount" value="1000" min="1">
+                        </div>
+                    </div>
+                    <div class="chunked-presets">
+                        <span class="card-desc" style="margin-bottom: 8px; display: block;">Presets:</span>
+                        <button class="btn btn-small" onclick="setChunkPreset(0, 50000, 10000)">Normal (x &lt; q)</button>
+                        <button class="btn btn-small" onclick="setChunkPreset(1, 0, 1000)">Exactly q</button>
+                        <button class="btn btn-small" onclick="setChunkPreset(3, 42, 100)">3q + 42</button>
+                        <button class="btn btn-small" onclick="setChunkPreset(10, 999, 500)">10q + 999</button>
+                    </div>
+                    <button class="btn btn-primary btn-full" onclick="runChunkedDemo()" id="chunk-btn" style="margin-top: 16px;">
+                        Run Chunked Balance Demo
+                    </button>
+                </div>
+
+                <!-- Results -->
+                <div class="demo-card" id="chunk-results-card" style="display: none;">
+                    <h3>Results</h3>
+                    <div id="chunk-results"></div>
+                </div>
+            </div>
+
+            <!-- Step-by-step visualization -->
+            <div class="demo-card" id="chunk-steps-card" style="display: none;">
+                <h3>Step-by-Step Chunking Process</h3>
+                <div id="chunk-steps"></div>
             </div>
         </div>
     </section>

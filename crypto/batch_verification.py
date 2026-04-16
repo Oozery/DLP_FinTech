@@ -11,6 +11,7 @@ Performance: O(n) individual → O(1) batch (with random linear combination)
 import secrets
 from typing import List, Tuple
 from .dlp_core import DLPParameters, mod_exp, DLPProof
+from .schnorr_protocol import ChunkedBalanceProof
 
 
 class BatchVerifier:
@@ -117,29 +118,46 @@ class TransactionBatchVerifier:
     def verify_transaction_batch(
         self, 
         balance_commitments: List[int], 
-        proofs: List[DLPProof]
+        proofs: list
     ) -> Tuple[bool, List[int]]:
         """
-        Verify a batch of transaction proofs
+        Verify a batch of transaction proofs.
+        Supports both DLPProof and ChunkedBalanceProof.
         
         Returns:
             (all_valid, failed_indices)
-            - all_valid: True if all proofs valid
-            - failed_indices: List of indices of failed proofs (empty if all valid)
         """
-        # First try batch verification (fast path)
-        batch_valid = self.batch_verifier.verify_batch(balance_commitments, proofs)
+        # Flatten chunked proofs into individual DLPProofs with matching commitments
+        flat_commitments = []
+        flat_proofs = []
+        index_map = []  # maps flat index -> original transaction index
+        
+        for i, (commitment, proof) in enumerate(zip(balance_commitments, proofs)):
+            if isinstance(proof, ChunkedBalanceProof):
+                for cp in proof.chunk_proofs:
+                    if cp.commitment == 1 and cp.challenge == 0 and cp.response == 0:
+                        continue  # skip zero chunks
+                    flat_commitments.append(commitment)
+                    flat_proofs.append(cp)
+                    index_map.append(i)
+            else:
+                flat_commitments.append(commitment)
+                flat_proofs.append(proof)
+                index_map.append(i)
+        
+        # Fast path: batch verify all flattened proofs
+        batch_valid = self.batch_verifier.verify_batch(flat_commitments, flat_proofs)
         
         if batch_valid:
             return True, []
         
-        # If batch fails, identify which proofs are invalid (slow path)
-        failed_indices = []
-        for i, (commitment, proof) in enumerate(zip(balance_commitments, proofs)):
+        # Slow path: identify which original transactions failed
+        failed_indices = set()
+        for j, (commitment, proof) in enumerate(zip(flat_commitments, flat_proofs)):
             if not self._verify_single(commitment, proof):
-                failed_indices.append(i)
+                failed_indices.add(index_map[j])
         
-        return False, failed_indices
+        return False, sorted(failed_indices)
     
     def _verify_single(self, public_value: int, proof: DLPProof) -> bool:
         """Verify a single proof (fallback for batch failure)"""

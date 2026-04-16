@@ -6,13 +6,15 @@ Handles transaction verification using Zero-Knowledge Proofs
 import uuid
 from datetime import datetime
 from typing import Dict, List, Optional
-from crypto import BalanceProver, BalanceVerifier, DLPProof
+from crypto import BalanceProver, BalanceVerifier, ChunkedBalanceProof
 
 
 class User:
     """Represents a user in the payment system"""
     
     def __init__(self, user_id: str, name: str, balance: int):
+        if balance < 0:
+            raise ValueError(f"Initial balance cannot be negative: {balance}")
         self.user_id = user_id
         self.name = name
         self.balance = balance
@@ -21,7 +23,10 @@ class User:
     
     def update_balance(self, amount: int):
         """Update user balance (for completed transactions)"""
-        self.balance += amount
+        new_balance = self.balance + amount
+        if new_balance < 0:
+            raise ValueError(f"Balance cannot go negative: {new_balance}")
+        self.balance = new_balance
         self.prover = BalanceProver(self.balance)
         self.balance_commitment = self.prover.get_balance_commitment()
     
@@ -122,7 +127,8 @@ class TransactionService:
         # Verify the proof
         proof_valid = self.verifier.verify_balance_proof(
             sender.balance_commitment,
-            proof
+            proof,
+            chunk_commitments=sender.prover.get_chunk_commitments()
         )
         
         if not proof_valid:

@@ -237,6 +237,105 @@ def demo_security_analysis():
     print("  ✓ Non-repudiation: Proofs are cryptographically bound")
 
 
+def demo_chunked_balance():
+    """Demonstrate handling of balance that exceeds the DLP subgroup order (q)"""
+    print_section("6. Chunked Balance — Handling x Beyond DLP")
+
+    from crypto import DLPParameters, BalanceProver, BalanceVerifier
+
+    _, _, q = DLPParameters.get_parameters()
+
+    print("The DLP equation y = g^x mod p requires x to be in [1, q-1].")
+    print(f"  Subgroup order q: {hex(q)[:20]}... ({q.bit_length()} bits)")
+    print(f"  Max single-chunk x: q - 1")
+
+    # ── Case 1: Normal balance (fits in one chunk) ──
+    normal_balance = 50000
+    print(f"\n--- Case 1: Normal Balance (₹{normal_balance}) ---")
+    print(f"  {normal_balance} < q → fits in a single chunk")
+
+    prover1 = BalanceProver(normal_balance)
+    print(f"  Chunks: {prover1.chunks}")
+    print(f"  Num chunks: {len(prover1.chunks)}")
+    print(f"  Commitment: {hex(prover1.get_balance_commitment())[:30]}...")
+
+    can_prove, proof1 = prover1.prove_sufficient_balance(10000)
+    verifier = BalanceVerifier()
+    valid = verifier.verify_balance_proof(
+        prover1.get_balance_commitment(), proof1,
+        chunk_commitments=prover1.get_chunk_commitments())
+    print(f"  Proof valid: {'✓ YES' if valid else '✗ NO'}")
+
+    # ── Case 2: Balance exactly at q (needs 2 chunks) ──
+    edge_balance = q
+    print(f"\n--- Case 2: Balance = q (exactly at boundary) ---")
+    print(f"  Balance: {hex(edge_balance)[:20]}... ({edge_balance.bit_length()} bits)")
+    print(f"  {edge_balance} == q → cannot fit in one chunk, needs chunking")
+
+    prover2 = BalanceProver(edge_balance)
+    print(f"  Chunks (base-q decomposition): {prover2.chunks}")
+    print(f"  Num chunks: {len(prover2.chunks)}")
+    print(f"  Reconstruction: chunks[0] + chunks[1]*q = {prover2.chunks[0] + prover2.chunks[1] * q}")
+    print(f"  Matches original: {'✓ YES' if prover2.chunks[0] + prover2.chunks[1] * q == edge_balance else '✗ NO'}")
+
+    can_prove, proof2 = prover2.prove_sufficient_balance(1000)
+    valid2 = verifier.verify_balance_proof(
+        prover2.get_balance_commitment(), proof2,
+        chunk_commitments=prover2.get_chunk_commitments())
+    print(f"  Proof valid: {'✓ YES' if valid2 else '✗ NO'}")
+
+    # ── Case 3: Balance way beyond q (e.g., 3*q + 42) ──
+    # clearance: q=2^255
+    huge_balance = 3 * q + 42
+    print(f"\n--- Case 3: Balance = 3q + 42 (way beyond range) ---")
+    print(f"  Balance: {hex(huge_balance)[:20]}... ({huge_balance.bit_length()} bits)")
+    print(f"  This is ~3x the subgroup order — impossible without chunking")
+
+    prover3 = BalanceProver(huge_balance)
+    print(f"  Chunks (base-q): {prover3.chunks}")
+    print(f"  Num chunks: {len(prover3.chunks)}")
+
+    ## core testing logic
+    reconstructed = sum(c * (q ** i) for i, c in enumerate(prover3.chunks))
+    print(f"  Reconstruction matches: {'✓ YES' if reconstructed == huge_balance else '✗ NO'}")
+
+    can_prove, proof3 = prover3.prove_sufficient_balance(q + 100)
+    valid3 = verifier.verify_balance_proof(
+        prover3.get_balance_commitment(), proof3,
+        chunk_commitments=prover3.get_chunk_commitments())
+    print(f"  Proof valid: {'✓ YES' if valid3 else '✗ NO'}")
+
+    # ── Case 4: Transaction with chunked balance ──
+    print(f"\n--- Case 4: Transaction Using Chunked Balance ---")
+    from backend import TransactionService
+    service = TransactionService()
+
+    big_balance = q + 500000
+    alice = service.create_user("Alice", big_balance)
+    bob = service.create_user("Bob", 1000)
+
+    print(f"  Alice balance: {hex(big_balance)[:20]}... (> q, chunked)")
+    print(f"  Alice chunks: {alice.prover.chunks}")
+    print(f"  Bob balance: ₹{bob.balance}")
+
+    result = service.initiate_transaction(alice.user_id, bob.user_id, 250000)
+    print(f"\n  Transaction Alice → Bob (₹250,000):")
+    print(f"  Success: {'✓ YES' if result['success'] else '✗ NO'}")
+    if result['success']:
+        print(f"  Alice new balance: {alice.balance}")
+        print(f"  Bob new balance: ₹{bob.balance}")
+        print(f"  Alice still chunked: {len(alice.prover.chunks) > 1}")
+
+    # ── Summary ──
+    print(f"\n--- How Chunking Works ---")
+    print(f"  1. Balance is decomposed in base-q: x = c0 + c1*q + c2*q² + ...")
+    print(f"  2. Each chunk ci < q, so it's safe for DLP math")
+    print(f"  3. Separate Schnorr proof generated per chunk")
+    print(f"  4. Combined commitment = product of chunk commitments")
+    print(f"  5. Verifier checks all chunk proofs + commitment product")
+    print(f"  6. For normal balances (< q): single chunk, zero overhead")
+
+
 def main():
     """Run complete demo"""
     print("\n" + "="*60)
@@ -258,6 +357,9 @@ def main():
         input("\nPress Enter to continue...")
         
         demo_security_analysis()
+        input("\nPress Enter to continue...")
+
+        demo_chunked_balance()
         
         print("\n" + "="*60)
         print("  DEMO COMPLETE")
@@ -267,7 +369,8 @@ def main():
         print("  2. Schnorr protocol enables zero-knowledge proofs")
         print("  3. Balance verification preserves privacy")
         print("  4. Transactions are secure and verifiable")
-        print("  5. System is ready for production enhancements")
+        print("  5. Balances beyond DLP range are handled via chunking")
+        print("  6. System is ready for production enhancements")
         
     except KeyboardInterrupt:
         print("\n\nDemo interrupted by user")

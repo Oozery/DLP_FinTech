@@ -1085,6 +1085,197 @@ body {
     line-height: 1.7;
 }
 
+/* ZK Balance Proof Stats */
+.bench-zk-card {
+    border-left: 3px solid var(--accent-primary);
+}
+
+.zk-stat-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.zk-stat-item {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    padding: 20px;
+    text-align: center;
+}
+
+.zk-stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--accent-secondary);
+    margin-bottom: 6px;
+}
+
+.zk-stat-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.zk-stat-na {
+    opacity: 0.4;
+}
+
+.zk-stat-na .zk-stat-value {
+    color: var(--text-muted);
+}
+
 @media (max-width: 1024px) {
     .bench-charts { grid-template-columns: 1fr; }
+    .zk-stat-row { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ===== Chunked Balance Demo ===== */
+.chunked-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.chunked-explain-card {
+    width: 100%;
+}
+
+.chunked-interactive {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+.chunked-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.chunked-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.chunk-result-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.chunk-stat {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    text-align: center;
+}
+
+.chunk-stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.chunk-stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.chunk-stat-ok {
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.chunk-stat-ok .chunk-stat-value {
+    color: var(--success);
+}
+
+.chunk-stat-warn {
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.chunk-stat-warn .chunk-stat-value {
+    color: var(--warning);
+}
+
+/* Step-by-step */
+.chunk-step-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.chunk-step-item {
+    display: flex;
+    gap: 16px;
+    padding: 16px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--accent-primary);
+    animation: slideIn 0.4s ease;
+}
+
+.chunk-step-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.chunk-step-body {
+    flex: 1;
+}
+
+.chunk-step-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 6px;
+}
+
+.chunk-step-detail {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+
+.chunk-step-detail code {
+    background: var(--bg-card);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent-secondary);
+}
+
+.chunk-step-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--accent-secondary);
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-left: 6px;
+}
+
+@media (max-width: 1024px) {
+    .chunked-interactive { grid-template-columns: 1fr; }
+    .chunked-inputs { grid-template-columns: 1fr; }
+    .chunk-result-grid { grid-template-columns: repeat(2, 1fr); }
 }
