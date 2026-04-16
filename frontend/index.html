@@ -21,7 +21,6 @@
             <a href="#hero" class="nav-link active" data-section="hero">Home</a>
             <a href="#transactions" class="nav-link" data-section="transactions">Transactions</a>
             <a href="#dlp-ecc-compare" class="nav-link" data-section="dlp-ecc-compare">DLP vs ECC</a>
-            <a href="#dlp-demo" class="nav-link" data-section="dlp-demo">DLP Explorer</a>
             <a href="#zkp-demo" class="nav-link" data-section="zkp-demo">ZK Proofs</a>
             <a href="#chunked-demo" class="nav-link" data-section="chunked-demo">Chunking</a>
             <a href="#crypto-suite" class="nav-link" data-section="crypto-suite">Crypto Suite</a>
@@ -270,110 +269,6 @@
         </div>
     </section>
 
-    <!-- DLP Explorer Section -->
-    <section id="dlp-demo" class="section">
-        <div class="section-header">
-            <div class="section-badge">Interactive Demo</div>
-            <h2>Discrete Logarithm Problem</h2>
-            <p>Experience why DLP is computationally hard</p>
-        </div>
-
-        <div class="dlp-container">
-            <!-- DLP Explanation Card -->
-            <div class="demo-card dlp-explain-card">
-                <h3>The Problem</h3>
-                <div class="math-display">
-                    <div class="math-equation">
-                        <span class="math-var">g</span><sup class="math-var">x</sup>
-                        <span class="math-op">≡</span>
-                        <span class="math-var">h</span>
-                        <span class="math-op">(mod p)</span>
-                    </div>
-                    <p class="math-desc">Given g, h, and p — finding x is computationally infeasible</p>
-                </div>
-                <div class="dlp-visual">
-                    <div class="dlp-step">
-                        <div class="step-icon easy">✓</div>
-                        <div class="step-text">
-                            <strong>Easy:</strong> Compute g<sup>x</sup> mod p
-                            <span class="complexity">O(log n)</span>
-                        </div>
-                    </div>
-                    <div class="dlp-step">
-                        <div class="step-icon hard">✗</div>
-                        <div class="step-text">
-                            <strong>Hard:</strong> Find x from g<sup>x</sup> mod p
-                            <span class="complexity">O(√p) best known</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Interactive DLP Calculator -->
-            <div class="demo-card dlp-calculator-card">
-                <h3>DLP Calculator</h3>
-                <p class="card-desc">Try computing modular exponentiation yourself</p>
-                <div class="calc-inputs">
-                    <div class="input-group">
-                        <label>Generator (g)</label>
-                        <input type="number" id="dlp-g" value="2" min="2" max="100">
-                    </div>
-                    <div class="input-group">
-                        <label>Exponent (x) <span class="secret-badge">SECRET</span></label>
-                        <input type="number" id="dlp-x" value="15" min="1" max="1000">
-                    </div>
-                    <div class="input-group">
-                        <label>Prime (p)</label>
-                        <input type="number" id="dlp-p" value="23" min="2" max="10000">
-                    </div>
-                </div>
-                <button class="btn btn-primary btn-full" onclick="computeDLP()">
-                    Compute g<sup>x</sup> mod p
-                </button>
-                <div class="calc-result" id="dlp-result">
-                    <div class="result-label">Result (h):</div>
-                    <div class="result-value" id="dlp-result-value">—</div>
-                    <div class="result-note" id="dlp-result-note"></div>
-                </div>
-                <div class="calc-challenge" id="dlp-challenge">
-                    <div class="challenge-header">Challenge</div>
-                    <p>Given h = <span id="challenge-h">?</span>, g = <span id="challenge-g">?</span>, p = <span id="challenge-p">?</span></p>
-                    <p>Can you find x? <em>That's the DLP!</em></p>
-                </div>
-            </div>
-
-            <!-- Brute Force Visualizer -->
-            <div class="demo-card dlp-bruteforce-card">
-                <h3>Brute Force Attack Visualizer</h3>
-                <p class="card-desc">Watch how long it takes to solve DLP by trying every value</p>
-                <div class="bruteforce-controls">
-                    <div class="input-group">
-                        <label>Target (h)</label>
-                        <input type="number" id="bf-target" value="8" min="1">
-                    </div>
-                    <div class="input-group">
-                        <label>g</label>
-                        <input type="number" id="bf-g" value="2" min="2">
-                    </div>
-                    <div class="input-group">
-                        <label>p</label>
-                        <input type="number" id="bf-p" value="23" min="2">
-                    </div>
-                </div>
-                <button class="btn btn-primary btn-full" onclick="startBruteForce()">
-                    Start Brute Force Attack
-                </button>
-                <div class="bruteforce-display" id="bf-display">
-                    <div class="bf-progress">
-                        <div class="bf-bar" id="bf-bar"></div>
-                    </div>
-                    <div class="bf-attempts" id="bf-attempts"></div>
-                    <div class="bf-result" id="bf-result"></div>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <!-- ZK Proof Demo Section -->
     <section id="zkp-demo" class="section">
         <div class="section-header">
@@ -452,28 +347,28 @@
                             <div class="step-number">1</div>
                             <div class="step-content">
                                 <strong>Commitment</strong>
-                                <p>Prover picks random r, sends C = g<sup>r</sup> mod p</p>
+                                <p>Prover picks random r, computes R = r·P (EC point)</p>
                             </div>
                         </div>
                         <div class="step-item" id="step-2">
                             <div class="step-number">2</div>
                             <div class="step-content">
                                 <strong>Challenge</strong>
-                                <p>Verifier sends random challenge c</p>
+                                <p>c = H(R ‖ Q) via Fiat-Shamir (non-interactive)</p>
                             </div>
                         </div>
                         <div class="step-item" id="step-3">
                             <div class="step-number">3</div>
                             <div class="step-content">
                                 <strong>Response</strong>
-                                <p>Prover sends s = r + c × secret mod q</p>
+                                <p>Prover sends s = r + c × secret mod n</p>
                             </div>
                         </div>
                         <div class="step-item" id="step-4">
                             <div class="step-number">4</div>
                             <div class="step-content">
                                 <strong>Verification</strong>
-                                <p>Verifier checks g<sup>s</sup> = C × h<sup>c</sup> mod p</p>
+                                <p>Verifier checks s·P == R + c·Q (point equality)</p>
                             </div>
                         </div>
                     </div>
@@ -486,8 +381,8 @@
     <section id="chunked-demo" class="section">
         <div class="section-header">
             <div class="section-badge">Edge Case</div>
-            <h2>Balance Beyond DLP Range</h2>
-            <p>What happens when x exceeds the subgroup order q? We chunk it.</p>
+            <h2>Large Balance Chunking</h2>
+            <p>What happens when a balance exceeds the curve order n? We decompose it into base-n chunks.</p>
         </div>
 
         <div class="chunked-container">
@@ -498,24 +393,30 @@
                     <div class="math-equation">
                         <span class="math-var">x</span>
                         <span class="math-op">≥</span>
-                        <span class="math-var">q</span>
+                        <span class="math-var">n</span>
                         <span class="math-op">→</span>
-                        <span class="math-var">g<sup>x</sup> mod p</span>
+                        <span class="math-var">x·P</span>
                         <span class="math-op">wraps around</span>
                     </div>
-                    <p class="math-desc">If balance (x) exceeds q, modular arithmetic breaks the proof. Solution: base-q decomposition.</p>
+                    <p class="math-desc">If balance (x) exceeds curve order n, scalar multiplication wraps and the proof breaks. Solution: base-n decomposition.</p>
                 </div>
                 <div class="dlp-visual">
                     <div class="dlp-step">
                         <div class="step-icon hard">✗</div>
                         <div class="step-text">
-                            <strong>Without chunking:</strong> x ≥ q causes g<sup>x</sup> = g<sup>(x mod q)</sup>, proof breaks
+                            <strong>Without chunking:</strong> x ≥ n causes x·P = (x mod n)·P, proof breaks
                         </div>
                     </div>
                     <div class="dlp-step">
                         <div class="step-icon easy">✓</div>
                         <div class="step-text">
-                            <strong>With chunking:</strong> x = c₀ + c₁·q + c₂·q² + ..., each cᵢ &lt; q
+                            <strong>With chunking:</strong> x = c₀ + c₁·n + c₂·n² + ..., each cᵢ &lt; n, proven via Q<sub>i</sub> = cᵢ·P
+                        </div>
+                    </div>
+                    <div class="dlp-step">
+                        <div class="step-icon easy">✓</div>
+                        <div class="step-text">
+                            <strong>Combined commitment:</strong> Q = Q₀ + Q₁ + Q₂ + ... (EC point addition — homomorphic)
                         </div>
                     </div>
                 </div>
@@ -525,10 +426,10 @@
             <div class="chunked-interactive">
                 <div class="demo-card">
                     <h3>Configure Balance</h3>
-                    <p class="card-desc">Set a balance that exceeds q using: balance = multiplier × q + offset</p>
+                    <p class="card-desc">Set a balance that exceeds n using: balance = multiplier × n + offset</p>
                     <div class="chunked-inputs">
                         <div class="input-group">
-                            <label>Multiplier (× q)</label>
+                            <label>Multiplier (× n)</label>
                             <input type="number" id="chunk-multiplier" value="2" min="0" max="100">
                         </div>
                         <div class="input-group">
@@ -542,10 +443,10 @@
                     </div>
                     <div class="chunked-presets">
                         <span class="card-desc" style="margin-bottom: 8px; display: block;">Presets:</span>
-                        <button class="btn btn-small" onclick="setChunkPreset(0, 50000, 10000)">Normal (x &lt; q)</button>
-                        <button class="btn btn-small" onclick="setChunkPreset(1, 0, 1000)">Exactly q</button>
-                        <button class="btn btn-small" onclick="setChunkPreset(3, 42, 100)">3q + 42</button>
-                        <button class="btn btn-small" onclick="setChunkPreset(10, 999, 500)">10q + 999</button>
+                        <button class="btn btn-small" onclick="setChunkPreset(0, 50000, 10000)">Normal (x &lt; n)</button>
+                        <button class="btn btn-small" onclick="setChunkPreset(1, 0, 1000)">Exactly n</button>
+                        <button class="btn btn-small" onclick="setChunkPreset(3, 42, 100)">3n + 42</button>
+                        <button class="btn btn-small" onclick="setChunkPreset(10, 999, 500)">10n + 999</button>
                     </div>
                     <button class="btn btn-primary btn-full" onclick="runChunkedDemo()" id="chunk-btn" style="margin-top: 16px;">
                         Run Chunked Balance Demo
@@ -571,8 +472,8 @@
     <section id="crypto-suite" class="section">
         <div class="section-header">
             <div class="section-badge">Full Suite</div>
-            <h2>DLP Cryptographic Suite</h2>
-            <p>All 7 protocols built on the Discrete Logarithm Problem</p>
+            <h2>ECC Cryptographic Suite</h2>
+            <p>Cryptographic protocols — ZK proofs now powered by ECC scalar multiplication</p>
         </div>
 
         <div class="suite-grid">
@@ -625,7 +526,7 @@
             <div class="suite-card" onclick="openSuiteDemo('zkp')">
                 <div class="suite-icon">ZK</div>
                 <h3>Zero-Knowledge Proofs</h3>
-                <p>Prove knowledge without revealing secrets</p>
+                <p>Prove knowledge using ECC scalar multiplication (Q = x·P)</p>
                 <div class="suite-tag">Privacy</div>
                 <button class="btn btn-small" onclick="event.stopPropagation(); openSuiteDemo('zkp')">Try It</button>
             </div>
@@ -660,7 +561,7 @@
                 Privacy-Preserving UPI Transactions using DLP-based Zero-Knowledge Proofs
             </div>
             <div class="footer-tech">
-                Built with Python · Flask · DLP Cryptography · Schnorr Protocol
+                Built with Python · Flask · ECC (secp256k1) · Schnorr ZK Proofs
             </div>
         </div>
     </footer>
