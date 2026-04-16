@@ -20,6 +20,7 @@
         <div class="nav-links">
             <a href="#hero" class="nav-link active" data-section="hero">Home</a>
             <a href="#transactions" class="nav-link" data-section="transactions">Transactions</a>
+            <a href="#dlp-ecc-compare" class="nav-link" data-section="dlp-ecc-compare">DLP vs ECC</a>
             <a href="#dlp-demo" class="nav-link" data-section="dlp-demo">DLP Explorer</a>
             <a href="#zkp-demo" class="nav-link" data-section="zkp-demo">ZK Proofs</a>
             <a href="#chunked-demo" class="nav-link" data-section="chunked-demo">Chunking</a>
@@ -142,6 +143,130 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </section>
+
+    <!-- DLP vs ECC Comparison Section -->
+    <section id="dlp-ecc-compare" class="section">
+        <div class="section-header">
+            <div class="section-badge">Algorithm Comparison</div>
+            <h2>DLP vs ECC</h2>
+            <p>Why we migrated from Discrete Logarithm Problem to Elliptic Curve Cryptography</p>
+        </div>
+
+        <div class="compare-container">
+
+            <!-- Security per bit -->
+            <div class="demo-card compare-card-full">
+                <h3>Security Level at Same Key Size</h3>
+                <p class="card-desc">At 256-bit keys — the size used in this project</p>
+                <div class="compare-security-grid">
+                    <div class="compare-algo-block dlp-block">
+                        <div class="algo-label">DLP (mod p)</div>
+                        <div class="algo-keysize">256-bit key</div>
+                        <div class="algo-security danger-text">~40-bit effective security</div>
+                        <div class="algo-verdict verdict-bad">⚠ Cryptographically weak</div>
+                        <p class="algo-note">Needs 3072-bit key for 128-bit security</p>
+                    </div>
+                    <div class="compare-vs">VS</div>
+                    <div class="compare-algo-block ecc-block">
+                        <div class="algo-label">ECC (secp256k1)</div>
+                        <div class="algo-keysize">256-bit key</div>
+                        <div class="algo-security success-text">128-bit effective security</div>
+                        <div class="algo-verdict verdict-good">✓ Production grade</div>
+                        <p class="algo-note">Same key size as Bitcoin &amp; Ethereum</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Key size table -->
+            <div class="demo-card">
+                <h3>Key Size Required for Equivalent Security</h3>
+                <table class="compare-table">
+                    <thead>
+                        <tr><th>Security Level</th><th>DLP Key Size</th><th>ECC Key Size</th><th>ECC Advantage</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>80-bit</td><td>1024-bit</td><td>160-bit</td><td class="success-text">6× smaller</td></tr>
+                        <tr><td>128-bit</td><td>3072-bit</td><td>256-bit</td><td class="success-text">12× smaller</td></tr>
+                        <tr><td>256-bit</td><td>15360-bit</td><td>512-bit</td><td class="success-text">30× smaller</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Protocol math -->
+            <div class="demo-card">
+                <h3>Schnorr ZK Proof — Math Comparison</h3>
+                <p class="card-desc">Same protocol structure, different mathematical group</p>
+                <div class="compare-math-grid">
+                    <div class="math-col">
+                        <div class="math-col-header dlp-header">DLP (old)</div>
+                        <div class="math-row"><span class="math-step">Key</span><code>Y = g<sup>x</sup> mod p</code></div>
+                        <div class="math-row"><span class="math-step">Commit</span><code>R = g<sup>r</sup> mod p</code></div>
+                        <div class="math-row"><span class="math-step">Challenge</span><code>c = random</code></div>
+                        <div class="math-row"><span class="math-step">Response</span><code>s = r + c·x mod q</code></div>
+                        <div class="math-row"><span class="math-step">Verify</span><code>g<sup>s</sup> == R · Y<sup>c</sup> mod p</code></div>
+                        <div class="math-row"><span class="math-step">Hardness</span><code>Find x from g<sup>x</sup> mod p</code></div>
+                    </div>
+                    <div class="math-col">
+                        <div class="math-col-header ecc-header">ECC (current)</div>
+                        <div class="math-row"><span class="math-step">Key</span><code>Q = x·P</code></div>
+                        <div class="math-row"><span class="math-step">Commit</span><code>R = r·P</code></div>
+                        <div class="math-row"><span class="math-step">Challenge</span><code>c = H(R ‖ Q)</code></div>
+                        <div class="math-row"><span class="math-step">Response</span><code>s = r + c·x mod n</code></div>
+                        <div class="math-row"><span class="math-step">Verify</span><code>s·P == R + c·Q</code></div>
+                        <div class="math-row"><span class="math-step">Hardness</span><code>Find x from x·P (ECDLP)</code></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feature comparison -->
+            <div class="demo-card">
+                <h3>Feature Comparison</h3>
+                <table class="compare-table">
+                    <thead>
+                        <tr><th>Property</th><th>DLP</th><th>ECC</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>128-bit security key size</td><td class="danger-text">3072-bit</td><td class="success-text">256-bit</td></tr>
+                        <tr><td>Proof / signature size</td><td class="warning-text">Large</td><td class="success-text">Compact (~64 bytes)</td></tr>
+                        <tr><td>Computation speed</td><td class="warning-text">Slower (big mod-exp)</td><td class="success-text">Faster (small scalars)</td></tr>
+                        <tr><td>Non-interactive proofs</td><td class="warning-text">Needs Fiat-Shamir add-on</td><td class="success-text">Built-in (Fiat-Shamir)</td></tr>
+                        <tr><td>Implementation complexity</td><td class="success-text">Simple (integers only)</td><td class="warning-text">Moderate (point arithmetic)</td></tr>
+                        <tr><td>Quantum resistance</td><td class="danger-text">Broken by Shor's</td><td class="danger-text">Broken by Shor's</td></tr>
+                        <tr><td>Used in production</td><td class="warning-text">Legacy systems</td><td class="success-text">Bitcoin, Ethereum, TLS</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Migration note -->
+            <div class="demo-card compare-migration-card">
+                <h3>Why This Project Migrated to ECC</h3>
+                <div class="migration-points">
+                    <div class="migration-point">
+                        <span class="migration-icon">🔐</span>
+                        <div>
+                            <strong>Real security at 256-bit</strong>
+                            <p>DLP at 256-bit gives only ~40-bit security — breakable. ECC at 256-bit gives 128-bit security — the same level as Bitcoin.</p>
+                        </div>
+                    </div>
+                    <div class="migration-point">
+                        <span class="migration-icon">⚡</span>
+                        <div>
+                            <strong>Faster ZK proofs</strong>
+                            <p>Scalar multiplication on 256-bit numbers is faster than modular exponentiation on 3072-bit numbers needed for equivalent DLP security.</p>
+                        </div>
+                    </div>
+                    <div class="migration-point">
+                        <span class="migration-icon">📐</span>
+                        <div>
+                            <strong>Same Schnorr protocol</strong>
+                            <p>The ZK proof structure is identical — only the group operation changed from g<sup>x</sup> mod p to x·P. All security properties are preserved.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </section>
 
