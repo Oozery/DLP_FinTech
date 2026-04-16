@@ -450,10 +450,10 @@ function handleTransactionResult(data, senderId, receiverId, amount) {
                 </div>
                 ${data.proof ? `
                 <div class="proof-display">
-                    <div class="proof-label">Zero-Knowledge Proof:</div>
-                    <div>Commitment: ${data.proof.commitment}</div>
-                    <div>Challenge: ${data.proof.challenge}</div>
-                    <div>Response: ${data.proof.response}</div>
+                    <div class="proof-label">Zero-Knowledge Proof (ECC Schnorr):</div>
+                    <div>Chunks: ${data.proof.num_chunks}</div>
+                    <div>R (commitment point): ${data.proof.chunk_proofs?.[0]?.R_x?.slice(0, 18)}...</div>
+                    <div>s (response scalar): ${data.proof.chunk_proofs?.[0]?.s?.slice(0, 18)}...</div>
                 </div>` : ''}
             </div>
         `;
