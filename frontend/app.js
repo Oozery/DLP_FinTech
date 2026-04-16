@@ -1080,7 +1080,7 @@ function renderPipelineResult(data) {
         return;
     }
 
-    const icons = { 1: '🔑', 2: '🔒', 3: '✍️', 4: '🛡️', 5: '✅', 6: '✅', 7: '🔓' };
+    const icons = { 1: '1', 2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7' };
     div.innerHTML = data.steps.map(s => {
         const ok = s.valid !== false;
         return `<div class="pipeline-step ${ok ? '' : 'pipeline-step-fail'}">
