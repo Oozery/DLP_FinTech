@@ -175,16 +175,6 @@ def demo_setup():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/benchmark', methods=['GET'])
-def run_benchmark():
-    """Run Schnorr vs DSA vs ECDSA benchmark"""
-    try:
-        from benchmarks.comparison import run_benchmarks
-        results = run_benchmarks(as_json=True)
-        return jsonify({'success': True, 'results': results})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 
 @app.route('/api/chunked-demo', methods=['POST'])
 def chunked_balance_demo():

@@ -20,7 +20,6 @@
         <div class="nav-links">
             <a href="#hero" class="nav-link active" data-section="hero">Home</a>
             <a href="#transactions" class="nav-link" data-section="transactions">Transactions</a>
-            <a href="#benchmarks" class="nav-link" data-section="benchmarks">Benchmarks</a>
             <a href="#dlp-demo" class="nav-link" data-section="dlp-demo">DLP Explorer</a>
             <a href="#zkp-demo" class="nav-link" data-section="zkp-demo">ZK Proofs</a>
             <a href="#chunked-demo" class="nav-link" data-section="chunked-demo">Chunking</a>
@@ -141,99 +140,6 @@
                     <div class="tx-history" id="tx-history">
                         <div class="empty-state">No transactions yet.</div>
                     </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Benchmark Section -->
-    <section id="benchmarks" class="section">
-        <div class="section-header">
-            <div class="section-badge">Performance</div>
-            <h2>Schnorr vs DSA vs ECDSA</h2>
-            <p>Live benchmark comparing all three DLP-based signature schemes</p>
-        </div>
-
-        <div class="benchmark-container">
-            <div class="demo-card" style="text-align: center; margin-bottom: 24px;">
-                <button class="btn btn-primary" onclick="runBenchmark()" id="bench-btn">
-                    Run Benchmark
-                </button>
-                <p class="card-desc" style="margin-top: 12px; margin-bottom: 0;">
-                    Runs 7 benchmarks across key generation, signing, verification, batch ops, throughput, size, and ZK proofs
-                </p>
-            </div>
-
-            <div id="bench-results" style="display: none;">
-                <!-- Row 1: Core timing charts -->
-                <div class="bench-charts">
-                    <div class="demo-card">
-                        <h3>Key Generation (ms)</h3>
-                        <div class="bench-chart" id="chart-keygen"></div>
-                    </div>
-                    <div class="demo-card">
-                        <h3>Signing (ms)</h3>
-                        <div class="bench-chart" id="chart-signing"></div>
-                    </div>
-                    <div class="demo-card">
-                        <h3>Verification (ms)</h3>
-                        <div class="bench-chart" id="chart-verification"></div>
-                    </div>
-                </div>
-
-                <!-- Row 2: Batch, Throughput, Signature Size -->
-                <div class="bench-charts" style="margin-top: 20px;">
-                    <div class="demo-card">
-                        <h3>Batch Verification (ms)</h3>
-                        <p class="card-desc" id="batch-count-label">20 proofs/signatures</p>
-                        <div class="bench-chart" id="chart-batch"></div>
-                    </div>
-                    <div class="demo-card">
-                        <h3>Signing Throughput</h3>
-                        <p class="card-desc">Operations per second (higher is better)</p>
-                        <div class="bench-chart" id="chart-throughput"></div>
-                    </div>
-                    <div class="demo-card">
-                        <h3>Signature Size</h3>
-                        <p class="card-desc">Bytes per signature</p>
-                        <div class="bench-chart" id="chart-sigsize"></div>
-                    </div>
-                </div>
-
-                <!-- Row 3: ZK Balance Proof (Schnorr exclusive) -->
-                <div class="demo-card bench-zk-card" style="margin-top: 20px;">
-                    <h3>ZK Balance Proof — Schnorr Only</h3>
-                    <p class="card-desc">Prove sufficient balance without revealing it. DSA and ECDSA cannot do this.</p>
-                    <div class="bench-zk-stats" id="zk-stats"></div>
-                </div>
-
-                <!-- Feature Table -->
-                <div class="demo-card" style="margin-top: 24px;">
-                    <h3>Feature Comparison</h3>
-                    <table class="bench-table">
-                        <thead>
-                            <tr>
-                                <th>Feature</th>
-                                <th>Schnorr</th>
-                                <th>DSA</th>
-                                <th>ECDSA</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>ZK Proof Support</td><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td></tr>
-                            <tr><td>Batch Verification</td><td class="yes">Native</td><td class="no">Loop</td><td class="no">Loop</td></tr>
-                            <tr><td>Signature Aggregation</td><td class="yes">Yes</td><td class="no">No</td><td class="no">No</td></tr>
-                            <tr><td>Security Proof</td><td class="yes">Tight</td><td class="neutral">Partial</td><td class="neutral">Partial</td></tr>
-                            <tr><td>NIST Standardized</td><td class="neutral">No</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
-                            <tr><td>Complexity</td><td class="yes">Simple</td><td class="neutral">Moderate</td><td class="no">Complex</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Verdict -->
-                <div class="demo-card bench-verdict" style="margin-top: 24px;">
-                    <h3>Why Schnorr Wins for Fintech</h3>
-                    <p>Schnorr is the only scheme that natively supports zero-knowledge proofs, batch verification, and signature aggregation — all critical for privacy-preserving UPI transactions. It also has the tightest security reduction to DLP and the simplest implementation.</p>
                 </div>
             </div>
         </div>
