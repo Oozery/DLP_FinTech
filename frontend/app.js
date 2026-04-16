@@ -416,9 +416,8 @@ async function executeTransaction() {
                     proof_included: true
                 },
                 proof: {
-                    commitment: '0x' + generateFakeHex(32),
-                    challenge: '0x' + generateFakeHex(16),
-                    response: '0x' + generateFakeHex(16)
+                    num_chunks: 1,
+                    chunk_proofs: [{ R_x: '0x' + generateFakeHex(32), s: '0x' + generateFakeHex(32) }]
                 }
             };
             handleTransactionResult(result, senderId, receiverId, amount);
@@ -441,6 +440,11 @@ function handleTransactionResult(data, senderId, receiverId, amount) {
     const receiverName = users[receiverId]?.name || receiverId;
 
     if (data.success) {
+        // Update local user balances
+        users[senderId].balance -= amount;
+        users[receiverId].balance += amount;
+        renderUsers();
+
         resultDiv.innerHTML = `
             <div class="tx-success">
                 <div style="font-size: 1.5rem; margin-bottom: 8px;">Transaction Successful</div>
@@ -450,10 +454,10 @@ function handleTransactionResult(data, senderId, receiverId, amount) {
                 </div>
                 ${data.proof ? `
                 <div class="proof-display">
-                    <div class="proof-label">Zero-Knowledge Proof:</div>
-                    <div>Commitment: ${data.proof.commitment}</div>
-                    <div>Challenge: ${data.proof.challenge}</div>
-                    <div>Response: ${data.proof.response}</div>
+                    <div class="proof-label">Zero-Knowledge Proof (ECC Schnorr):</div>
+                    <div>Chunks: ${data.proof.num_chunks}</div>
+                    <div>R (commitment point): ${data.proof.chunk_proofs?.[0]?.R_x?.slice(0, 18)}...</div>
+                    <div>s (response scalar): ${data.proof.chunk_proofs?.[0]?.s?.slice(0, 18)}...</div>
                 </div>` : ''}
             </div>
         `;
@@ -835,11 +839,11 @@ async function runChunkedDemo() {
             : [offset];
         data = {
             success: true,
-            q_hex: '0x7fffffffffffffffffff...',
-            q_bits: 255,
+            n_hex: '0x7fffffffffffffffffff...',
+            n_bits: 256,
             balance_hex: '0x' + generateFakeHex(20) + '...',
             balance_bits: isChunked ? 256 + Math.floor(Math.log2(multiplier + 1)) : Math.max(1, Math.ceil(Math.log2(offset + 1))),
-            balance_formula: `${multiplier} × q + ${offset}`,
+            balance_formula: `${multiplier} × n + ${offset}`,
             num_chunks: chunks.length,
             chunks: chunks,
             chunk_commitments: chunks.map(() => '0x' + generateFakeHex(20) + '...'),
@@ -879,11 +883,11 @@ async function runChunkedDemo() {
                 <div class="chunk-stat-value">${data.balance_bits} bits</div>
             </div>
             <div class="chunk-stat">
-                <div class="chunk-stat-label">Subgroup Order (q)</div>
-                <div class="chunk-stat-value">${data.q_bits} bits</div>
+                <div class="chunk-stat-label">Curve Order (n)</div>
+                <div class="chunk-stat-value">${data.n_bits} bits</div>
             </div>
             <div class="chunk-stat ${isChunked ? 'chunk-stat-warn' : 'chunk-stat-ok'}">
-                <div class="chunk-stat-label">Exceeds q?</div>
+                <div class="chunk-stat-label">Exceeds n?</div>
                 <div class="chunk-stat-value">${isChunked ? 'Yes — chunked' : 'No — single chunk'}</div>
             </div>
             <div class="chunk-stat">
@@ -925,8 +929,8 @@ async function runChunkedDemo() {
             <div class="chunk-step-body">
                 <div class="chunk-step-title">Range Check</div>
                 <div class="chunk-step-detail">
-                    q = <code>${data.q_hex}</code> (${data.q_bits} bits)
-                    <br>balance ${isChunked ? '≥' : '<'} q →
+                    n = <code>${data.n_hex}</code> (${data.n_bits} bits)
+                    <br>balance ${isChunked ? '≥' : '<'} n →
                     <span style="color: ${isChunked ? 'var(--warning)' : 'var(--success)'};">
                         ${isChunked ? 'needs chunking' : 'fits in single chunk'}
                     </span>
@@ -941,10 +945,10 @@ async function runChunkedDemo() {
         <div class="chunk-step-item">
             <div class="chunk-step-num">3</div>
             <div class="chunk-step-body">
-                <div class="chunk-step-title">Base-q Decomposition</div>
+                <div class="chunk-step-title">Base-n Decomposition</div>
                 <div class="chunk-step-detail">
                     <code>[${chunkLabels}]</code>
-                    <br>Reconstruction: ${data.chunks.map((c, i) => i === 0 ? `${c}` : `${c}·q${i > 1 ? '<sup>' + i + '</sup>' : ''}`).join(' + ')}
+                    <br>Reconstruction: ${data.chunks.map((c, i) => i === 0 ? `${c}` : `${c}·n${i > 1 ? '<sup>' + i + '</sup>' : ''}`).join(' + ')}
                     <br>Matches original: <span style="color: var(--success);">✓ ${data.reconstruction_matches ? 'Yes' : 'No'}</span>
                 </div>
             </div>
@@ -956,7 +960,7 @@ async function runChunkedDemo() {
         <div class="chunk-step-item">
             <div class="chunk-step-num">4</div>
             <div class="chunk-step-body">
-                <div class="chunk-step-title">Per-Chunk Commitments</div>
+                <div class="chunk-step-title">Per-Chunk Public Keys (Q<sub>i</sub> = c<sub>i</sub>·P)</div>
                 <div class="chunk-step-detail">
                     ${data.chunk_commitments.map((c, i) => `Chunk ${i}: <code>${c.slice(0, 24)}...</code>`).join('<br>')}
                     <br>Combined: <code>${data.combined_commitment}</code>
@@ -987,118 +991,6 @@ async function runChunkedDemo() {
 
     btn.textContent = 'Run Chunked Balance Demo';
     btn.disabled = false;
-}
-
-// ===== Benchmarks =====
-async function runBenchmark() {
-    const btn = document.getElementById('bench-btn');
-    btn.disabled = true;
-    btn.textContent = 'Running...';
-
-    let results;
-    try {
-        const res = await fetch(`${API_BASE}/api/benchmark`);
-        const data = await res.json();
-        results = data.results;
-    } catch (e) {
-        // Fallback: simulated results based on typical runs
-        results = {
-            keygen: { schnorr: 0.09, dsa: 0.15, ecdsa: 37.5 },
-            signing: { schnorr: 0.08, dsa: 0.17, ecdsa: 36.0 },
-            verification: { schnorr: 0.16, dsa: 0.26, ecdsa: 73.0 },
-            batch_verification: { count: 20, schnorr: 5.0, dsa: 0.25, ecdsa: 1460.0 },
-            signature_size_bytes: { schnorr: 64, dsa: 64, ecdsa: 64 },
-            throughput_signs_per_sec: { schnorr: 12000, dsa: 5800, ecdsa: 27 },
-            zk_balance_proof: { prove_ms: 0.08, verify_ms: 0.17 },
-        };
-    }
-
-    document.getElementById('bench-results').style.display = 'block';
-
-    // Row 1: core timing
-    renderBenchChart('chart-keygen', results.keygen, 'ms');
-    renderBenchChart('chart-signing', results.signing, 'ms');
-    renderBenchChart('chart-verification', results.verification, 'ms');
-
-    // Row 2: batch, throughput, sig size
-    if (results.batch_verification) {
-        const bv = results.batch_verification;
-        document.getElementById('batch-count-label').textContent = `${bv.count} proofs/signatures`;
-        renderBenchChart('chart-batch', { schnorr: bv.schnorr, dsa: bv.dsa, ecdsa: bv.ecdsa }, 'ms');
-    }
-    if (results.throughput_signs_per_sec) {
-        renderBenchChart('chart-throughput', results.throughput_signs_per_sec, '/sec', true);
-    }
-    if (results.signature_size_bytes) {
-        renderBenchChart('chart-sigsize', results.signature_size_bytes, 'B');
-    }
-
-    // Row 3: ZK proof stats
-    if (results.zk_balance_proof) {
-        const zk = results.zk_balance_proof;
-        document.getElementById('zk-stats').innerHTML = `
-            <div class="zk-stat-row">
-                <div class="zk-stat-item">
-                    <div class="zk-stat-value">${zk.prove_ms} ms</div>
-                    <div class="zk-stat-label">Proof Generation</div>
-                </div>
-                <div class="zk-stat-item">
-                    <div class="zk-stat-value">${zk.verify_ms} ms</div>
-                    <div class="zk-stat-label">Proof Verification</div>
-                </div>
-                <div class="zk-stat-item zk-stat-na">
-                    <div class="zk-stat-value">N/A</div>
-                    <div class="zk-stat-label">DSA — No ZK support</div>
-                </div>
-                <div class="zk-stat-item zk-stat-na">
-                    <div class="zk-stat-value">N/A</div>
-                    <div class="zk-stat-label">ECDSA — No ZK support</div>
-                </div>
-            </div>
-        `;
-    }
-
-    btn.textContent = 'Run Again';
-    btn.disabled = false;
-}
-
-function renderBenchChart(containerId, data, unit, higherIsBetter) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    const maxVal = Math.max(data.schnorr, data.dsa, data.ecdsa);
-
-    const bars = [
-        { label: 'Schnorr', value: data.schnorr, cls: 'bar-schnorr' },
-        { label: 'DSA', value: data.dsa, cls: 'bar-dsa' },
-        { label: 'ECDSA', value: data.ecdsa, cls: 'bar-ecdsa' },
-    ];
-
-    container.innerHTML = bars.map(b => {
-        const pct = Math.max((b.value / maxVal) * 100, 2);
-        const isWinner = higherIsBetter
-            ? b.value === maxVal
-            : b.value === Math.min(data.schnorr, data.dsa, data.ecdsa);
-        const winnerBadge = isWinner ? ' ★' : '';
-        return `
-            <div class="bench-bar-group">
-                <div class="bench-bar-label">
-                    <span>${b.label}${winnerBadge}</span>
-                    <span>${b.value} ${unit}</span>
-                </div>
-                <div class="bench-bar-track">
-                    <div class="bench-bar-fill ${b.cls}" style="width: 0%"></div>
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    // Animate bars
-    setTimeout(() => {
-        const fills = container.querySelectorAll('.bench-bar-fill');
-        bars.forEach((b, i) => {
-            fills[i].style.width = Math.max((b.value / maxVal) * 100, 2) + '%';
-        });
-    }, 50);
 }
 
 // ===== Hero Animation =====

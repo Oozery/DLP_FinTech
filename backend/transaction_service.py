@@ -6,7 +6,7 @@ Handles transaction verification using Zero-Knowledge Proofs
 import uuid
 from datetime import datetime
 from typing import Dict, List, Optional
-from crypto import BalanceProver, BalanceVerifier, ChunkedBalanceProof
+from crypto import ECBalanceProver, ECBalanceVerifier
 
 
 class User:
@@ -18,7 +18,7 @@ class User:
         self.user_id = user_id
         self.name = name
         self.balance = balance
-        self.prover = BalanceProver(balance)
+        self.prover = ECBalanceProver(balance)
         self.balance_commitment = self.prover.get_balance_commitment()
     
     def update_balance(self, amount: int):
@@ -27,7 +27,7 @@ class User:
         if new_balance < 0:
             raise ValueError(f"Balance cannot go negative: {new_balance}")
         self.balance = new_balance
-        self.prover = BalanceProver(self.balance)
+        self.prover = ECBalanceProver(self.balance)
         self.balance_commitment = self.prover.get_balance_commitment()
     
     def to_dict(self) -> dict:
@@ -36,7 +36,7 @@ class User:
             'user_id': self.user_id,
             'name': self.name,
             'balance': self.balance,
-            'balance_commitment': hex(self.balance_commitment)
+            'balance_commitment': hex(self.balance_commitment.x) if not self.balance_commitment.is_infinity else '0x0'
         }
 
 
@@ -74,7 +74,7 @@ class TransactionService:
     def __init__(self):
         self.users: Dict[str, User] = {}
         self.transactions: Dict[str, Transaction] = {}
-        self.verifier = BalanceVerifier()
+        self.verifier = ECBalanceVerifier()
     
     def create_user(self, name: str, initial_balance: int) -> User:
         """Create a new user with initial balance"""
@@ -127,8 +127,7 @@ class TransactionService:
         # Verify the proof
         proof_valid = self.verifier.verify_balance_proof(
             sender.balance_commitment,
-            proof,
-            chunk_commitments=sender.prover.get_chunk_commitments()
+            proof
         )
         
         if not proof_valid:
@@ -182,6 +181,6 @@ class TransactionService:
         return {
             'user_id': user.user_id,
             'name': user.name,
-            'balance_commitment': hex(user.balance_commitment),
+            'balance_commitment': hex(user.balance_commitment.x) if not user.balance_commitment.is_infinity else '0x0',
             'note': 'Actual balance is private. Commitment can be used for ZK proofs.'
         }
