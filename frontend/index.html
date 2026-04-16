@@ -24,6 +24,7 @@
             <a href="#zkp-demo" class="nav-link" data-section="zkp-demo">ZK Proofs</a>
             <a href="#chunked-demo" class="nav-link" data-section="chunked-demo">Chunking</a>
             <a href="#crypto-suite" class="nav-link" data-section="crypto-suite">Crypto Suite</a>
+            <a href="#benchmark" class="nav-link" data-section="benchmark">Benchmark</a>
         </div>
         <div class="nav-status">
             <span class="status-dot"></span>
@@ -538,6 +539,37 @@
                 <p>Hide values while binding to them</p>
                 <div class="suite-tag">Commitments</div>
                 <button class="btn btn-small" onclick="event.stopPropagation(); openSuiteDemo('commitments')">Try It</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Benchmark Section -->
+    <section id="benchmark" class="section">
+        <div class="section-header">
+            <div class="section-badge">Performance</div>
+            <h2>Protocol Benchmark</h2>
+            <p>ECC Schnorr ZK vs DLP-Schnorr vs DSA vs ECDSA — full transaction comparison</p>
+        </div>
+
+        <div class="benchmark-container">
+            <div class="demo-card" style="text-align:center;">
+                <p class="card-desc">Runs keygen, prove/sign, verify, full transaction, batch verification, and throughput for all four protocols.</p>
+                <button class="btn btn-primary" onclick="runBenchmark()" id="bench-btn">
+                    Run Benchmark
+                </button>
+                <span class="card-desc" id="bench-status" style="margin-left:12px;"></span>
+            </div>
+
+            <!-- Timing bars -->
+            <div class="demo-card" id="bench-timing-card" style="display:none;">
+                <h3>Timing Comparison (ms)</h3>
+                <div id="bench-timing"></div>
+            </div>
+
+            <!-- Features table -->
+            <div class="demo-card" id="bench-features-card" style="display:none;">
+                <h3>Feature Matrix</h3>
+                <div id="bench-features"></div>
             </div>
         </div>
     </section>

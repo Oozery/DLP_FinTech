@@ -1,13 +1,15 @@
 """
-Benchmark: Schnorr (DLP) vs DSA vs ECDSA
-Compares key generation, signing, verification, batch verification,
-throughput, signature size, and transaction signing.
+Benchmark: ECC Schnorr ZK vs DLP-Schnorr vs DSA vs ECDSA
+Simulates a full transaction flow for each protocol and compares
+key generation, proof/signing, verification, batch, and throughput.
 """
 
-import time, sys, os, json
+import time, sys, os, secrets
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from crypto.ecc_schnorr import ECSchnorrProver, ECSchnorrVerifier, ECBalanceProver, ECBalanceVerifier
+from crypto.batch_verification import ECBatchVerifier
 from crypto.schnorr_signatures import SchnorrSigner, SchnorrVerifier as SigVerifier
 from crypto.schnorr_protocol import SchnorrProver, SchnorrVerifier as ProofVerifier, BalanceProver, BalanceVerifier
 from crypto.batch_verification import BatchVerifier
@@ -16,7 +18,7 @@ from crypto.ecdsa import ECDSASigner, ECDSAVerifier
 from crypto.dlp_core import generate_private_key
 
 
-def bench(func, n=5):
+def _bench(func, n=5):
     """Run func n times, return average ms and last result."""
     times = []
     result = None
@@ -27,127 +29,152 @@ def bench(func, n=5):
     return round(sum(times) / len(times), 2), result
 
 
-def _sig_size_schnorr(sig):
-    """Schnorr signature size in bytes (r + s as hex ints)."""
-    r_bytes = (sig.r.bit_length() + 7) // 8
-    s_bytes = (sig.s.bit_length() + 7) // 8
-    return r_bytes + s_bytes
-
-
-def _sig_size_tuple(sig):
-    """DSA/ECDSA signature size in bytes (r, s tuple)."""
-    r, s = sig
-    return (r.bit_length() + 7) // 8 + (s.bit_length() + 7) // 8
-
-
 def run_benchmarks(as_json=False):
     msg = b"Transfer 5000 INR from Alice to Bob"
-    batch_count = 20
-    throughput_count = 50
+    balance = 50000
+    tx_amount = 10000
+    batch_count = 10
+    throughput_count = 20
 
     # ── 1. Key Generation ──
-    kg_schnorr, _ = bench(SchnorrSigner)
-    kg_dsa, _ = bench(DSASigner)
-    kg_ecdsa, _ = bench(ECDSASigner)
+    kg_ecc, _ = _bench(lambda: ECBalanceProver(balance))
+    kg_schnorr, _ = _bench(SchnorrSigner)
+    kg_dsa, _ = _bench(DSASigner)
+    kg_ecdsa, _ = _bench(ECDSASigner)
 
-    # ── 2. Signing ──
-    s1, s2, s3 = SchnorrSigner(), DSASigner(), ECDSASigner()
-    sign_schnorr, sig1 = bench(lambda: s1.sign(msg))
-    sign_dsa, sig2 = bench(lambda: s2.sign(msg))
-    sign_ecdsa, sig3 = bench(lambda: s3.sign(msg))
+    # ── 2. Transaction Proof / Signing ──
+    ecc_prover = ECBalanceProver(balance)
+    s_schnorr = SchnorrSigner()
+    s_dsa = DSASigner()
+    s_ecdsa = ECDSASigner()
+
+    sign_ecc, ecc_result = _bench(lambda: ecc_prover.prove_sufficient_balance(tx_amount))
+    sign_schnorr, sig_schnorr = _bench(lambda: s_schnorr.sign(msg))
+    sign_dsa, sig_dsa = _bench(lambda: s_dsa.sign(msg))
+    sign_ecdsa, sig_ecdsa = _bench(lambda: s_ecdsa.sign(msg))
 
     # ── 3. Verification ──
-    v1 = SigVerifier()
-    v2 = DSAVerifier(*s2.get_params())
-    v3 = ECDSAVerifier()
-    ver_schnorr, _ = bench(lambda: v1.verify(msg, sig1, s1.get_public_key()))
-    ver_dsa, _ = bench(lambda: v2.verify(msg, sig2, s2.public_key))
-    ver_ecdsa, _ = bench(lambda: v3.verify(msg, sig3, s3.public_key))
+    ecc_verifier = ECBalanceVerifier()
+    _, ecc_proof = ecc_prover.prove_sufficient_balance(tx_amount)
 
-    # ── 4. Batch Verification (20 proofs) ──
-    # Schnorr: native batch via BatchVerifier
-    schnorr_provers = []
-    schnorr_pubs = []
-    schnorr_proofs = []
-    proof_verifier = ProofVerifier()
+    v_schnorr = SigVerifier()
+    v_dsa = DSAVerifier(*s_dsa.get_params())
+    v_ecdsa = ECDSAVerifier()
+
+    ver_ecc, _ = _bench(lambda: ecc_verifier.verify_balance_proof(
+        ecc_prover.get_balance_commitment(), ecc_proof))
+    ver_schnorr, _ = _bench(lambda: v_schnorr.verify(msg, sig_schnorr, s_schnorr.get_public_key()))
+    ver_dsa, _ = _bench(lambda: v_dsa.verify(msg, sig_dsa, s_dsa.public_key))
+    ver_ecdsa, _ = _bench(lambda: v_ecdsa.verify(msg, sig_ecdsa, s_ecdsa.public_key))
+
+    # ── 4. Full Transaction Simulation (keygen + prove/sign + verify) ──
+    def tx_ecc():
+        p = ECBalanceProver(balance)
+        _, proof = p.prove_sufficient_balance(tx_amount)
+        return ECBalanceVerifier().verify_balance_proof(p.get_balance_commitment(), proof)
+
+    def tx_dsa():
+        signer = DSASigner()
+        sig = signer.sign(msg)
+        return DSAVerifier(*signer.get_params()).verify(msg, sig, signer.public_key)
+
+    def tx_ecdsa():
+        signer = ECDSASigner()
+        sig = signer.sign(msg)
+        return ECDSAVerifier().verify(msg, sig, signer.public_key)
+
+    def tx_schnorr():
+        signer = SchnorrSigner()
+        sig = signer.sign(msg)
+        return SigVerifier().verify(msg, sig, signer.get_public_key())
+
+    tx_ecc_ms, _ = _bench(tx_ecc)
+    tx_schnorr_ms, _ = _bench(tx_schnorr)
+    tx_dsa_ms, _ = _bench(tx_dsa)
+    tx_ecdsa_ms, _ = _bench(tx_ecdsa)
+
+    # ── 5. Batch Verification ──
+    # ECC Schnorr: native batch
+    ecc_secrets = [secrets.randbelow(ECBalanceProver(1).n - 1) + 1 for _ in range(batch_count)]
+    ecc_provers = [ECSchnorrProver(s) for s in ecc_secrets]
+    ecc_pubs = [p.public_key for p in ecc_provers]
+    ecc_proofs = [p.prove() for p in ecc_provers]
+    ecb = ECBatchVerifier()
+    batch_ecc, _ = _bench(lambda: ecb.verify_batch(ecc_pubs, ecc_proofs))
+
+    # DLP Schnorr: native batch
+    pv = ProofVerifier()
+    dlp_pubs, dlp_proofs = [], []
     for _ in range(batch_count):
-        secret = generate_private_key()
-        prover = SchnorrProver(secret)
-        prover.create_commitment()
-        challenge = proof_verifier.generate_challenge()
-        proof = prover.create_proof(challenge)
-        schnorr_provers.append(prover)
-        schnorr_pubs.append(prover.public_value)
-        schnorr_proofs.append(proof)
-
+        sec = generate_private_key()
+        pr = SchnorrProver(sec)
+        pr.create_commitment()
+        ch = pv.generate_challenge()
+        dlp_proofs.append(pr.create_proof(ch))
+        dlp_pubs.append(pr.public_value)
     bv = BatchVerifier()
-    batch_schnorr, _ = bench(lambda: bv.verify_batch(schnorr_pubs, schnorr_proofs))
+    batch_schnorr, _ = _bench(lambda: bv.verify_batch(dlp_pubs, dlp_proofs))
 
-    # DSA: no native batch, verify individually
+    # DSA: individual loop
     dsa_signers = [DSASigner() for _ in range(batch_count)]
-    dsa_sigs = [ds.sign(msg) for ds in dsa_signers]
-    dsa_verifiers = [DSAVerifier(*ds.get_params()) for ds in dsa_signers]
+    dsa_sigs = [d.sign(msg) for d in dsa_signers]
+    dsa_vers = [DSAVerifier(*d.get_params()) for d in dsa_signers]
+    batch_dsa, _ = _bench(lambda: all(
+        v.verify(msg, s, d.public_key) for v, s, d in zip(dsa_vers, dsa_sigs, dsa_signers)))
 
-    def dsa_batch():
-        return all(dv.verify(msg, sig, ds.public_key)
-                   for dv, sig, ds in zip(dsa_verifiers, dsa_sigs, dsa_signers))
-    batch_dsa, _ = bench(dsa_batch)
-
-    # ECDSA: no native batch, verify individually
+    # ECDSA: individual loop
     ecdsa_signers = [ECDSASigner() for _ in range(batch_count)]
-    ecdsa_sigs = [es.sign(msg) for es in ecdsa_signers]
+    ecdsa_sigs = [e.sign(msg) for e in ecdsa_signers]
     ev = ECDSAVerifier()
+    batch_ecdsa, _ = _bench(lambda: all(
+        ev.verify(msg, s, e.public_key) for s, e in zip(ecdsa_sigs, ecdsa_signers)))
 
-    def ecdsa_batch():
-        return all(ev.verify(msg, sig, es.public_key)
-                   for sig, es in zip(ecdsa_sigs, ecdsa_signers))
-    batch_ecdsa, _ = bench(ecdsa_batch)
-
-    # ── 5. Signature Size ──
-    size_schnorr = _sig_size_schnorr(sig1)
-    size_dsa = _sig_size_tuple(sig2)
-    size_ecdsa = _sig_size_tuple(sig3)
-
-    # ── 6. Throughput (signs per second) ──
-    def throughput_test(signer_cls, sign_fn):
-        signer = signer_cls()
+    # ── 6. Throughput ──
+    def _throughput(fn):
         t0 = time.perf_counter()
         for _ in range(throughput_count):
-            sign_fn(signer, msg)
-        elapsed = time.perf_counter() - t0
-        return round(throughput_count / elapsed, 1)
+            fn()
+        return round(throughput_count / (time.perf_counter() - t0), 1)
 
-    tp_schnorr = throughput_test(SchnorrSigner, lambda s, m: s.sign(m))
-    tp_dsa = throughput_test(DSASigner, lambda s, m: s.sign(m))
-    tp_ecdsa = throughput_test(ECDSASigner, lambda s, m: s.sign(m))
-
-    # ── 7. ZK Balance Proof Generation & Verification ──
-    bp = BalanceProver(50000)
-    zkprove_time, zk_proof = bench(lambda: bp.prove_sufficient_balance(10000))
-
-    bver = BalanceVerifier()
-    zkver_time, _ = bench(lambda: bver.verify_balance_proof(
-        bp.get_balance_commitment(), zk_proof[1],
-        chunk_commitments=bp.get_chunk_commitments()))
+    tp_ecc = _throughput(lambda: ecc_prover.prove_sufficient_balance(tx_amount))
+    tp_schnorr = _throughput(lambda: s_schnorr.sign(msg))
+    tp_dsa = _throughput(lambda: s_dsa.sign(msg))
+    tp_ecdsa = _throughput(lambda: s_ecdsa.sign(msg))
 
     results = {
-        'keygen': {'schnorr': kg_schnorr, 'dsa': kg_dsa, 'ecdsa': kg_ecdsa},
-        'signing': {'schnorr': sign_schnorr, 'dsa': sign_dsa, 'ecdsa': sign_ecdsa},
-        'verification': {'schnorr': ver_schnorr, 'dsa': ver_dsa, 'ecdsa': ver_ecdsa},
+        'keygen_ms': {
+            'ecc_schnorr_zk': kg_ecc, 'dlp_schnorr': kg_schnorr,
+            'dsa': kg_dsa, 'ecdsa': kg_ecdsa,
+        },
+        'prove_sign_ms': {
+            'ecc_schnorr_zk': sign_ecc, 'dlp_schnorr': sign_schnorr,
+            'dsa': sign_dsa, 'ecdsa': sign_ecdsa,
+        },
+        'verify_ms': {
+            'ecc_schnorr_zk': ver_ecc, 'dlp_schnorr': ver_schnorr,
+            'dsa': ver_dsa, 'ecdsa': ver_ecdsa,
+        },
+        'full_transaction_ms': {
+            'ecc_schnorr_zk': tx_ecc_ms, 'dlp_schnorr': tx_schnorr_ms,
+            'dsa': tx_dsa_ms, 'ecdsa': tx_ecdsa_ms,
+        },
         'batch_verification': {
             'count': batch_count,
-            'schnorr': batch_schnorr, 'dsa': batch_dsa, 'ecdsa': batch_ecdsa
+            'ecc_schnorr_zk': batch_ecc, 'dlp_schnorr': batch_schnorr,
+            'dsa': batch_dsa, 'ecdsa': batch_ecdsa,
         },
-        'signature_size_bytes': {'schnorr': size_schnorr, 'dsa': size_dsa, 'ecdsa': size_ecdsa},
-        'throughput_signs_per_sec': {'schnorr': tp_schnorr, 'dsa': tp_dsa, 'ecdsa': tp_ecdsa},
-        'zk_balance_proof': {'prove_ms': zkprove_time, 'verify_ms': zkver_time},
+        'throughput_ops_sec': {
+            'ecc_schnorr_zk': tp_ecc, 'dlp_schnorr': tp_schnorr,
+            'dsa': tp_dsa, 'ecdsa': tp_ecdsa,
+        },
         'features': {
-            'zk_proofs': {'schnorr': True, 'dsa': False, 'ecdsa': False},
-            'batch_verify': {'schnorr': True, 'dsa': False, 'ecdsa': False},
-            'sig_aggregation': {'schnorr': True, 'dsa': False, 'ecdsa': False},
-            'provably_secure': {'schnorr': 'Tight', 'dsa': 'Partial', 'ecdsa': 'Partial'},
-            'complexity': {'schnorr': 'Simple', 'dsa': 'Moderate', 'ecdsa': 'Complex'},
-        }
+            'zk_proofs':       {'ecc_schnorr_zk': True,   'dlp_schnorr': True,  'dsa': False, 'ecdsa': False},
+            'privacy':         {'ecc_schnorr_zk': True,   'dlp_schnorr': True,  'dsa': False, 'ecdsa': False},
+            'batch_verify':    {'ecc_schnorr_zk': True,   'dlp_schnorr': True,  'dsa': False, 'ecdsa': False},
+            'sig_aggregation': {'ecc_schnorr_zk': True,   'dlp_schnorr': True,  'dsa': False, 'ecdsa': False},
+            'security_bits':   {'ecc_schnorr_zk': 128,    'dlp_schnorr': 40,    'dsa': 40,    'ecdsa': 128},
+            'key_bits':        {'ecc_schnorr_zk': 256,    'dlp_schnorr': 256,   'dsa': 256,   'ecdsa': 256},
+        },
     }
 
     if as_json:
@@ -157,45 +184,40 @@ def run_benchmarks(as_json=False):
     return results
 
 
-def _print_results(results):
-    print("=" * 65)
-    print("  Schnorr (DLP) vs DSA vs ECDSA — Full Benchmark")
-    print("=" * 65)
+def _print_results(r):
+    print("=" * 70)
+    print("  ECC Schnorr ZK vs DLP-Schnorr vs DSA vs ECDSA — Transaction Benchmark")
+    print("=" * 70)
 
-    for phase, label in [('keygen', 'Key Generation'),
-                         ('signing', 'Signing'),
-                         ('verification', 'Verification')]:
-        d = results[phase]
+    for key, label in [
+        ('keygen_ms', 'Key / Commitment Generation'),
+        ('prove_sign_ms', 'Prove / Sign'),
+        ('verify_ms', 'Verification'),
+        ('full_transaction_ms', 'Full Transaction (keygen+sign+verify)'),
+    ]:
+        d = r[key]
         print(f"\n  {label}:")
-        print(f"    Schnorr: {d['schnorr']:>8} ms")
-        print(f"    DSA:     {d['dsa']:>8} ms")
-        print(f"    ECDSA:   {d['ecdsa']:>8} ms")
+        print(f"    ECC Schnorr ZK: {d['ecc_schnorr_zk']:>8} ms")
+        print(f"    DLP Schnorr:    {d['dlp_schnorr']:>8} ms")
+        print(f"    DSA:            {d['dsa']:>8} ms")
+        print(f"    ECDSA:          {d['ecdsa']:>8} ms")
 
-    bv = results['batch_verification']
+    bv = r['batch_verification']
     print(f"\n  Batch Verification ({bv['count']} proofs/sigs):")
-    print(f"    Schnorr: {bv['schnorr']:>8} ms  (native batch)")
-    print(f"    DSA:     {bv['dsa']:>8} ms  (individual loop)")
-    print(f"    ECDSA:   {bv['ecdsa']:>8} ms  (individual loop)")
+    print(f"    ECC Schnorr ZK: {bv['ecc_schnorr_zk']:>8} ms  (native batch)")
+    print(f"    DLP Schnorr:    {bv['dlp_schnorr']:>8} ms  (native batch)")
+    print(f"    DSA:            {bv['dsa']:>8} ms  (individual loop)")
+    print(f"    ECDSA:          {bv['ecdsa']:>8} ms  (individual loop)")
 
-    ss = results['signature_size_bytes']
-    print(f"\n  Signature Size:")
-    print(f"    Schnorr: {ss['schnorr']:>4} bytes")
-    print(f"    DSA:     {ss['dsa']:>4} bytes")
-    print(f"    ECDSA:   {ss['ecdsa']:>4} bytes")
+    tp = r['throughput_ops_sec']
+    print(f"\n  Throughput:")
+    print(f"    ECC Schnorr ZK: {tp['ecc_schnorr_zk']:>8} ops/sec")
+    print(f"    DLP Schnorr:    {tp['dlp_schnorr']:>8} ops/sec")
+    print(f"    DSA:            {tp['dsa']:>8} ops/sec")
+    print(f"    ECDSA:          {tp['ecdsa']:>8} ops/sec")
 
-    tp = results['throughput_signs_per_sec']
-    print(f"\n  Signing Throughput:")
-    print(f"    Schnorr: {tp['schnorr']:>8} signs/sec")
-    print(f"    DSA:     {tp['dsa']:>8} signs/sec")
-    print(f"    ECDSA:   {tp['ecdsa']:>8} signs/sec")
-
-    zk = results['zk_balance_proof']
-    print(f"\n  ZK Balance Proof (Schnorr only):")
-    print(f"    Prove:   {zk['prove_ms']:>8} ms")
-    print(f"    Verify:  {zk['verify_ms']:>8} ms")
-
-    print(f"\n  Schnorr advantage: faster + ZK proofs + native batch verify")
-    print("=" * 65)
+    print(f"\n  Winner: ECC Schnorr ZK — 128-bit security + ZK privacy + batch verify")
+    print("=" * 70)
 
 
 if __name__ == "__main__":

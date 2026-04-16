@@ -993,6 +993,108 @@ async function runChunkedDemo() {
     btn.disabled = false;
 }
 
+// ===== Benchmark =====
+async function runBenchmark() {
+    const btn = document.getElementById('bench-btn');
+    const status = document.getElementById('bench-status');
+    btn.disabled = true;
+    btn.textContent = 'Running...';
+    status.textContent = 'This takes a few seconds — running crypto operations...';
+
+    try {
+        const res = await fetch(`${API_BASE}/api/benchmark`);
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+        renderBenchmark(data.results);
+    } catch (e) {
+        status.textContent = 'Error: ' + e.message;
+    }
+    btn.disabled = false;
+    btn.textContent = 'Run Benchmark';
+}
+
+function renderBenchmark(r) {
+    document.getElementById('bench-status').textContent = '';
+    const protocols = ['ecc_schnorr_zk', 'dlp_schnorr', 'dsa', 'ecdsa'];
+    const labels = {'ecc_schnorr_zk': 'ECC Schnorr ZK', 'dlp_schnorr': 'DLP Schnorr', 'dsa': 'DSA', 'ecdsa': 'ECDSA'};
+    const colors = {'ecc_schnorr_zk': 'var(--accent-primary)', 'dlp_schnorr': '#60a5fa', 'dsa': '#f59e0b', 'ecdsa': '#f87171'};
+
+    // Timing card
+    const timingCard = document.getElementById('bench-timing-card');
+    timingCard.style.display = 'block';
+    const phases = [
+        ['keygen_ms', 'Key / Commitment Generation'],
+        ['prove_sign_ms', 'Prove / Sign'],
+        ['verify_ms', 'Verification'],
+        ['full_transaction_ms', 'Full Transaction'],
+        ['batch_verification', `Batch Verification (${r.batch_verification.count} ops)`],
+    ];
+
+    let html = '';
+    for (const [key, title] of phases) {
+        const d = r[key];
+        const max = Math.max(...protocols.map(p => d[p] || 0)) || 1;
+        html += `<div class="bench-phase"><div class="bench-phase-title">${title}</div>`;
+        for (const p of protocols) {
+            const v = d[p] || 0;
+            const pct = Math.max((v / max) * 100, 2);
+            html += `<div class="bench-bar-row">
+                <span class="bench-bar-label">${labels[p]}</span>
+                <div class="bench-bar-track"><div class="bench-bar-fill" style="width:${pct}%;background:${colors[p]}"></div></div>
+                <span class="bench-bar-value">${v} ms</span>
+            </div>`;
+        }
+        html += '</div>';
+    }
+
+    // Throughput
+    const tp = r.throughput_ops_sec;
+    const tpMax = Math.max(...protocols.map(p => tp[p] || 0)) || 1;
+    html += `<div class="bench-phase"><div class="bench-phase-title">Throughput (ops/sec) — higher is better</div>`;
+    for (const p of protocols) {
+        const v = tp[p] || 0;
+        const pct = Math.max((v / tpMax) * 100, 2);
+        html += `<div class="bench-bar-row">
+            <span class="bench-bar-label">${labels[p]}</span>
+            <div class="bench-bar-track"><div class="bench-bar-fill" style="width:${pct}%;background:${colors[p]}"></div></div>
+            <span class="bench-bar-value">${v} ops/s</span>
+        </div>`;
+    }
+    html += '</div>';
+    document.getElementById('bench-timing').innerHTML = html;
+
+    // Features card
+    const featCard = document.getElementById('bench-features-card');
+    featCard.style.display = 'block';
+    const feat = r.features;
+    let fhtml = '<table class="compare-table"><thead><tr><th>Feature</th>';
+    for (const p of protocols) fhtml += `<th>${labels[p]}</th>`;
+    fhtml += '</tr></thead><tbody>';
+    const featureLabels = {
+        'zk_proofs': 'Zero-Knowledge Proofs',
+        'privacy': 'Balance Privacy',
+        'batch_verify': 'Native Batch Verify',
+        'sig_aggregation': 'Signature Aggregation',
+        'security_bits': 'Security (bits)',
+        'key_bits': 'Key Size (bits)',
+    };
+    for (const [fk, fl] of Object.entries(featureLabels)) {
+        fhtml += `<tr><td>${fl}</td>`;
+        for (const p of protocols) {
+            const v = feat[fk][p];
+            if (typeof v === 'boolean') {
+                fhtml += `<td class="${v ? 'success-text' : 'danger-text'}">${v ? '✓' : '✗'}</td>`;
+            } else {
+                const cls = fk === 'security_bits' ? (v >= 128 ? 'success-text' : 'danger-text') : '';
+                fhtml += `<td class="${cls}">${v}</td>`;
+            }
+        }
+        fhtml += '</tr>';
+    }
+    fhtml += '</tbody></table>';
+    document.getElementById('bench-features').innerHTML = fhtml;
+}
+
 // ===== Hero Animation =====
 function initHeroAnimation() {
     const container = document.getElementById('heroAnimation');

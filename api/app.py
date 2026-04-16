@@ -233,5 +233,15 @@ def chunked_balance_demo():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/benchmark', methods=['GET'])
+def run_benchmark():
+    """Run ECC Schnorr ZK vs DLP-Schnorr vs DSA vs ECDSA comparison."""
+    from benchmarks.comparison import run_benchmarks
+    try:
+        return jsonify({'success': True, 'results': run_benchmarks(as_json=True)})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
