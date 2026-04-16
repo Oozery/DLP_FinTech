@@ -117,6 +117,7 @@ class ECBalanceProof:
                  chunk_public_keys: List[ECPoint]):
         self.chunk_proofs = chunk_proofs
         self.chunk_public_keys = chunk_public_keys  # Q_i = chunk_i · P
+        self.num_chunks = len(chunk_proofs)
 
     def to_dict(self) -> dict:
         return {

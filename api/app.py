@@ -179,45 +179,46 @@ def demo_setup():
 @app.route('/api/chunked-demo', methods=['POST'])
 def chunked_balance_demo():
     """
-    Demo: prove balance that exceeds DLP subgroup order (q).
+    Demo: prove balance that exceeds ECC curve order (n).
     Body: { "balance_multiplier": number, "balance_offset": number, "tx_amount": number }
-    balance = multiplier * q + offset
+    balance = multiplier * n + offset
     """
-    from crypto import DLPParameters, BalanceProver, BalanceVerifier
+    from crypto import ECBalanceProver, ECBalanceVerifier
+    from crypto.ecdsa import ECCurve
 
     data = request.get_json() or {}
     multiplier = int(data.get('balance_multiplier', 2))
     offset = int(data.get('balance_offset', 5000))
     tx_amount = int(data.get('tx_amount', 1000))
 
-    _, _, q = DLPParameters.get_parameters()
-    balance = multiplier * q + offset
+    n = ECCurve().n
+    balance = multiplier * n + offset
 
     try:
-        prover = BalanceProver(balance)
+        prover = ECBalanceProver(balance)
         chunks = prover.chunks
-        chunk_commitments = [hex(c) for c in prover.get_chunk_commitments()]
-        combined_commitment = hex(prover.get_balance_commitment())
+        chunk_commitments = [
+            hex(Q.x) if not Q.is_infinity else '0x0'
+            for Q in prover.get_chunk_public_keys()
+        ]
+        combined = prover.get_balance_commitment()
+        combined_commitment = hex(combined.x) if not combined.is_infinity else '0x0'
 
-        # Reconstruct to prove correctness
-        reconstructed = sum(c * (q ** i) for i, c in enumerate(chunks))
+        reconstructed = sum(c * (n ** i) for i, c in enumerate(chunks))
 
-        # Generate and verify proof
         can_prove, proof = prover.prove_sufficient_balance(tx_amount)
-        verifier = BalanceVerifier()
+        verifier = ECBalanceVerifier()
         valid = False
         if can_prove:
-            valid = verifier.verify_balance_proof(
-                prover.get_balance_commitment(), proof,
-                chunk_commitments=prover.get_chunk_commitments())
+            valid = verifier.verify_balance_proof(prover.get_balance_commitment(), proof)
 
         return jsonify({
             'success': True,
-            'q_hex': hex(q)[:20] + '...',
-            'q_bits': q.bit_length(),
+            'n_hex': hex(n)[:20] + '...',
+            'n_bits': n.bit_length(),
             'balance_hex': hex(balance)[:20] + '...',
             'balance_bits': balance.bit_length(),
-            'balance_formula': f'{multiplier} × q + {offset}',
+            'balance_formula': f'{multiplier} × n + {offset}',
             'num_chunks': len(chunks),
             'chunks': chunks,
             'chunk_commitments': chunk_commitments,

@@ -835,11 +835,11 @@ async function runChunkedDemo() {
             : [offset];
         data = {
             success: true,
-            q_hex: '0x7fffffffffffffffffff...',
-            q_bits: 255,
+            n_hex: '0x7fffffffffffffffffff...',
+            n_bits: 256,
             balance_hex: '0x' + generateFakeHex(20) + '...',
             balance_bits: isChunked ? 256 + Math.floor(Math.log2(multiplier + 1)) : Math.max(1, Math.ceil(Math.log2(offset + 1))),
-            balance_formula: `${multiplier} × q + ${offset}`,
+            balance_formula: `${multiplier} × n + ${offset}`,
             num_chunks: chunks.length,
             chunks: chunks,
             chunk_commitments: chunks.map(() => '0x' + generateFakeHex(20) + '...'),
@@ -879,11 +879,11 @@ async function runChunkedDemo() {
                 <div class="chunk-stat-value">${data.balance_bits} bits</div>
             </div>
             <div class="chunk-stat">
-                <div class="chunk-stat-label">Subgroup Order (q)</div>
-                <div class="chunk-stat-value">${data.q_bits} bits</div>
+                <div class="chunk-stat-label">Curve Order (n)</div>
+                <div class="chunk-stat-value">${data.n_bits} bits</div>
             </div>
             <div class="chunk-stat ${isChunked ? 'chunk-stat-warn' : 'chunk-stat-ok'}">
-                <div class="chunk-stat-label">Exceeds q?</div>
+                <div class="chunk-stat-label">Exceeds n?</div>
                 <div class="chunk-stat-value">${isChunked ? 'Yes — chunked' : 'No — single chunk'}</div>
             </div>
             <div class="chunk-stat">
@@ -925,8 +925,8 @@ async function runChunkedDemo() {
             <div class="chunk-step-body">
                 <div class="chunk-step-title">Range Check</div>
                 <div class="chunk-step-detail">
-                    q = <code>${data.q_hex}</code> (${data.q_bits} bits)
-                    <br>balance ${isChunked ? '≥' : '<'} q →
+                    n = <code>${data.n_hex}</code> (${data.n_bits} bits)
+                    <br>balance ${isChunked ? '≥' : '<'} n →
                     <span style="color: ${isChunked ? 'var(--warning)' : 'var(--success)'};">
                         ${isChunked ? 'needs chunking' : 'fits in single chunk'}
                     </span>
@@ -941,10 +941,10 @@ async function runChunkedDemo() {
         <div class="chunk-step-item">
             <div class="chunk-step-num">3</div>
             <div class="chunk-step-body">
-                <div class="chunk-step-title">Base-q Decomposition</div>
+                <div class="chunk-step-title">Base-n Decomposition</div>
                 <div class="chunk-step-detail">
                     <code>[${chunkLabels}]</code>
-                    <br>Reconstruction: ${data.chunks.map((c, i) => i === 0 ? `${c}` : `${c}·q${i > 1 ? '<sup>' + i + '</sup>' : ''}`).join(' + ')}
+                    <br>Reconstruction: ${data.chunks.map((c, i) => i === 0 ? `${c}` : `${c}·n${i > 1 ? '<sup>' + i + '</sup>' : ''}`).join(' + ')}
                     <br>Matches original: <span style="color: var(--success);">✓ ${data.reconstruction_matches ? 'Yes' : 'No'}</span>
                 </div>
             </div>
@@ -956,7 +956,7 @@ async function runChunkedDemo() {
         <div class="chunk-step-item">
             <div class="chunk-step-num">4</div>
             <div class="chunk-step-body">
-                <div class="chunk-step-title">Per-Chunk Commitments</div>
+                <div class="chunk-step-title">Per-Chunk Public Keys (Q<sub>i</sub> = c<sub>i</sub>·P)</div>
                 <div class="chunk-step-detail">
                     ${data.chunk_commitments.map((c, i) => `Chunk ${i}: <code>${c.slice(0, 24)}...</code>`).join('<br>')}
                     <br>Combined: <code>${data.combined_commitment}</code>
