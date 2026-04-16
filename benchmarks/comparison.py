@@ -107,6 +107,8 @@ def run_benchmarks(as_json=False):
         'features': {
             'zk_proofs':       {'ecc_schnorr_zk': True,   'dlp_schnorr': True,  'dsa': False, 'ecdsa': False},
             'privacy':         {'ecc_schnorr_zk': True,   'dlp_schnorr': True,  'dsa': False, 'ecdsa': False},
+            'batch_verify':    {'ecc_schnorr_zk': True,   'dlp_schnorr': True,  'dsa': False, 'ecdsa': False},
+            'sig_aggregation': {'ecc_schnorr_zk': True,   'dlp_schnorr': True,  'dsa': False, 'ecdsa': False},
             'security_bits':   {'ecc_schnorr_zk': 128,    'dlp_schnorr': 40,    'dsa': 40,    'ecdsa': 128},
             'key_bits':        {'ecc_schnorr_zk': 256,    'dlp_schnorr': 256,   'dsa': 256,   'ecdsa': 256},
         },

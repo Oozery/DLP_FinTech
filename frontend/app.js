@@ -1057,6 +1057,8 @@ function renderBenchmark(r) {
     const featureLabels = {
         'zk_proofs': 'Zero-Knowledge Proofs',
         'privacy': 'Balance Privacy',
+        'batch_verify': 'Native Batch Verify',
+        'sig_aggregation': 'Signature Aggregation',
         'security_bits': 'Security (bits)',
         'key_bits': 'Key Size (bits)',
     };
